@@ -12,9 +12,10 @@ load_dotenv()
 app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
 
 # Select LLM Provider
-# Default to Mock if OLLAMA_MODEL is not set
-if os.environ.get("OLLAMA_MODEL"):
-    llm = OllamaProvider(model=os.environ.get("OLLAMA_MODEL"))
+provider_type = os.environ.get("LLM_PROVIDER", "mock").lower()
+
+if provider_type == "ollama":
+    llm = OllamaProvider(model=os.environ.get("OLLAMA_MODEL", "llama3"))
 else:
     llm = MockProvider()
 

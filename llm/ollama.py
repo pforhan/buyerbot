@@ -2,6 +2,7 @@ import json
 import httpx
 from typing import Dict, List
 from .base import LLMProvider
+from logger import log_full
 
 class OllamaProvider(LLMProvider):
     def __init__(self, model: str = "llama3", base_url: str = "http://localhost:11434"):
@@ -9,6 +10,7 @@ class OllamaProvider(LLMProvider):
         self.base_url = f"{base_url}/api/generate"
 
     def _call_ollama(self, prompt: str) -> Dict:
+        log_full(f"Ollama Prompt: {prompt}")
         payload = {
             "model": self.model,
             "prompt": prompt,
@@ -18,7 +20,9 @@ class OllamaProvider(LLMProvider):
         try:
             response = httpx.post(self.base_url, json=payload, timeout=30.0)
             response.raise_for_status()
-            return json.loads(response.json()["response"])
+            raw_response = response.json()["response"]
+            log_full(f"Ollama Raw Response: {raw_response}")
+            return json.loads(raw_response)
         except Exception as e:
             print(f"Error calling Ollama: {e}")
             return {}

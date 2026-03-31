@@ -5,6 +5,7 @@ from slack_bolt.adapter.socket_mode import SocketModeHandler
 from llm import MockProvider, OllamaProvider
 from db import create_db_and_tables, search_items
 from processor import sync_channel
+from logger import log_basic
 
 load_dotenv()
 
@@ -13,6 +14,7 @@ app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
 
 # Select LLM Provider
 provider_type = os.environ.get("LLM_PROVIDER", "mock").lower()
+log_basic(f"Initializing with LLM_PROVIDER: {provider_type}")
 
 if provider_type == "ollama":
     llm = OllamaProvider(model=os.environ.get("OLLAMA_MODEL", "llama3"))
@@ -24,6 +26,8 @@ def handle_command(ack, respond, command):
     ack()
     
     query_text = command["text"]
+    user_id = command["user_id"]
+    log_basic(f"Received /buyerbot command from {user_id}: {query_text}")
     
     respond(f"Searching for items related to: {query_text}...")
     
@@ -33,6 +37,7 @@ def handle_command(ack, respond, command):
     
     # 2. Search DB for items
     matches = search_items(product)
+    log_basic(f"Search for '{product}' returned {len(matches)} results.")
     
     if not matches:
         respond("No matches found in the history.")
@@ -74,18 +79,23 @@ def handle_command(ack, respond, command):
 def handle_sync(ack, respond, command):
     ack()
     channel_id = command["channel_id"]
+    user_id = command["user_id"]
+    log_basic(f"Received /buyerbot-sync command from {user_id} for channel {channel_id}")
     respond("Syncing channel history... this may take a moment.")
     
     try:
         sync_channel(app.client, channel_id, llm)
         respond("Sync complete!")
     except Exception as e:
+        log_basic(f"Sync failed: {e}")
         respond(f"Sync failed: {e}")
 
 if __name__ == "__main__":
     # Create DB tables
+    log_basic("Initializing database...")
     create_db_and_tables()
     
     # Start Socket Mode
+    log_basic("Starting BuyerBot in Socket Mode...")
     handler = SocketModeHandler(app, os.environ.get("SLACK_APP_TOKEN"))
     handler.start()

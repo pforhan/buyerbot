@@ -29,4 +29,5 @@ This document tracks planned features, improvements, and technical debt for the 
 ## Developer Experience
 - [ ] **CLI Tooling**: Add a local CLI script to test LLM extraction against sample message strings without needing Slack.
 - [ ] **Test Suite**: Implement `pytest` for unit testing the LLM providers and database logic.
+- [x] **Tiered Debug Logging**: Implement a `DEBUG_LEVEL` (none, basic, full) to output activity and LLM interactions to stdout.
 - [ ] **Logging**: Implement a proper logging configuration (using the `logging` module) instead of `print` statements.

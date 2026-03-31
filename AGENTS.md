@@ -25,6 +25,7 @@ As an AI coding agent working on this project, you must adhere to these specific
 
 ## LLM Interaction Rules
 
+- **Centralized Prompts**: Always use templates from `llm/prompts.py` for shared logic (parsing requests, analyzing posts). This ensures consistency when adding new providers.
 - **JSON Enforcement**: When prompting LLMs for structured data, explicitly request JSON format and provide a clear schema. Always wrap LLM parsing in `try/except` blocks to handle malformed JSON.
 - **Context Management**: Keep LLM prompts concise. When analyzing Slack posts, only send the necessary message text and thread content.
 

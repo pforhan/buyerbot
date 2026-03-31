@@ -1,7 +1,7 @@
 from typing import List
 from slack_sdk import WebClient
 from llm import LLMProvider
-from db import SlackPost, save_post
+from db import save_items_for_post
 
 def sync_channel(client: WebClient, channel_id: str, llm: LLMProvider):
     """
@@ -17,6 +17,7 @@ def sync_channel(client: WebClient, channel_id: str, llm: LLMProvider):
             
         ts = msg.get("ts")
         text = msg.get("text", "")
+        user_id = msg.get("user", "Unknown")
         
         # Fetch thread replies if any
         replies = []
@@ -24,17 +25,14 @@ def sync_channel(client: WebClient, channel_id: str, llm: LLMProvider):
             reply_resp = client.conversations_replies(channel=channel_id, ts=ts)
             replies = [r.get("text", "") for r in reply_resp.get("messages", [])[1:]] # Skip main post
             
-        # Analyze with LLM
-        analysis = llm.analyze_post(text, replies)
+        # Analyze with LLM (returns a list of items)
+        items_analysis = llm.analyze_post(text, replies)
         
         # Save to DB
-        if analysis:
-            post = SlackPost(
+        if items_analysis:
+            save_items_for_post(
                 slack_ts=ts,
                 channel_id=channel_id,
-                product_name=analysis.get("product_name", "Unknown"),
-                price=str(analysis.get("price", "unknown")),
-                status=analysis.get("status", "Available"),
-                features=", ".join(analysis.get("features", []))
+                user_id=user_id,
+                items_data=items_analysis
             )
-            save_post(post)

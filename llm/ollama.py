@@ -31,14 +31,20 @@ class OllamaProvider(LLMProvider):
         """
         return self._call_ollama(prompt)
 
-    def analyze_post(self, message_text: str, thread_replies: List[str]) -> Dict:
+    def analyze_post(self, message_text: str, thread_replies: List[str]) -> List[Dict]:
         replies_text = "\n".join(thread_replies)
         prompt = f"""
-        Analyze this Slack post and its replies for a buy/sell item.
+        Analyze this Slack post and its replies for any buy/sell items mentioned.
+        A single post may contain multiple items for sale.
+        
         Post: "{message_text}"
         Replies: "{replies_text}"
         
-        Extract product name, price (number or "unknown"), features (list), and status (Available, Sold, or Pending).
-        Return as JSON with keys: "product_name", "price", "features", "status".
+        Extract a list of items. For each item, extract product name, price (number or "unknown"), 
+        features (list), and status (Available, Sold, or Pending).
+        
+        Return as JSON with a key "items" which is a list of objects, each with keys: 
+        "product_name", "price", "features", "status".
         """
-        return self._call_ollama(prompt)
+        result = self._call_ollama(prompt)
+        return result.get("items", [])

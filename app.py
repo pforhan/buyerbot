@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 from llm import MockProvider, OllamaProvider
-from db import create_db_and_tables, search_posts
+from db import create_db_and_tables, search_items
 from processor import sync_channel
 
 load_dotenv()
@@ -24,18 +24,15 @@ def handle_command(ack, respond, command):
     ack()
     
     query_text = command["text"]
-    channel_id = command["channel_id"]
     
-    # Optional: Sync before searching? Or keep a separate sync command.
-    # For now, let's just search.
     respond(f"Searching for items related to: {query_text}...")
     
     # 1. Parse request with LLM
     parsed = llm.parse_request(query_text)
     product = parsed.get("product", query_text) # Fallback to original text
     
-    # 2. Search DB
-    matches = search_posts(product)
+    # 2. Search DB for items
+    matches = search_items(product)
     
     if not matches:
         respond("No matches found in the history.")
@@ -53,12 +50,21 @@ def handle_command(ack, respond, command):
         {"type": "divider"}
     ]
     
-    for post in matches:
+    for item in matches:
+        # Access the user_id from the related post
+        seller_mention = f"<@{item.post.user_id}>" if item.post else "Unknown Seller"
+        
         blocks.append({
             "type": "section",
             "text": {
                 "type": "mrkdwn",
-                "text": f"*Product*: {post.product_name}\n*Price*: {post.price}\n*Status*: {post.status}\n*Features*: {post.features}"
+                "text": (
+                    f"*Product*: {item.product_name}\n"
+                    f"*Price*: {item.price}\n"
+                    f"*Status*: {item.status}\n"
+                    f"*Seller*: {seller_mention}\n"
+                    f"*Features*: {item.features}"
+                )
             }
         })
         

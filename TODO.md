@@ -5,6 +5,8 @@ This document tracks planned features, improvements, and technical debt for the 
 ## High Priority
 - [ ] **Real-time Sync**: Implement an event listener for `message.channels` to automatically index new posts as they arrive.
 - [ ] **Error Handling & Robustness**: Add more comprehensive `try/except` blocks around LLM parsing, especially for non-standard JSON responses.
+- [x] **Multi-Product Support**: A single Slack post can contain multiple items, and BuyerBot will index them individually.
+- [x] **Seller Tracking**: Automatically identifies the Slack user who posted an item.
 - [ ] **Sold Status Detection**: Improve the logic for detecting "Sold" status by specifically looking for common emojis (e.g., :white_check_mark:, :x:) and key phrases in thread replies.
 
 ## LLM Providers

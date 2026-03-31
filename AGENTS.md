@@ -5,7 +5,10 @@ As an AI coding agent working on this project, you must adhere to these specific
 ## Core Architectural Principles
 
 - **Extensibility First**: All LLM-related logic must reside in the `llm/` directory and inherit from `llm.base.LLMProvider`. Never hardcode provider-specific logic in `app.py` or `processor.py`.
-- **Database Integrity**: Use `sqlmodel` for all database interactions. Ensure that `slack_ts` remains the unique identifier for posts to prevent duplicate indexing.
+- **Database Integrity**: Use `sqlmodel` for all database interactions. 
+    - `Post` model stores Slack-specific metadata (`slack_ts`, `user_id`).
+    - `Item` model stores extracted product details and belongs to a `Post`.
+    - Ensure that `slack_ts` remains the unique identifier for posts to prevent duplicate indexing of the same message.
 - **Statelessness**: The Slack app uses Socket Mode and is designed to be largely stateless, relying on the SQLite database (`buyerbot.db`) for persistence.
 
 ## Coding Standards

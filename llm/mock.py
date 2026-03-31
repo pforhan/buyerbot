@@ -17,7 +17,7 @@ class MockProvider(LLMProvider):
             "raw_query": query
         }
 
-    def analyze_post(self, message_text: str, thread_replies: List[str]) -> Dict:
+    def analyze_post(self, message_text: str, thread_replies: List[str]) -> List[Dict]:
         # Mock analysis
         text = message_text.lower()
         status = "Available"
@@ -25,16 +25,28 @@ class MockProvider(LLMProvider):
             status = "Sold"
         
         # Simple extraction
-        product = "Unknown Product"
+        items = []
         if "macbook" in text:
-            product = "Macbook"
-        elif "iphone" in text:
-            product = "iPhone"
+            items.append({
+                "product_name": "Macbook",
+                "price": "Check post",
+                "features": [],
+                "status": status,
+            })
+        if "iphone" in text:
+            items.append({
+                "product_name": "iPhone",
+                "price": "Check post",
+                "features": [],
+                "status": status,
+            })
+            
+        if not items:
+            items.append({
+                "product_name": "Unknown Product",
+                "price": "Check post",
+                "features": [],
+                "status": status,
+            })
 
-        return {
-            "product_name": product,
-            "price": "Check post",
-            "features": [],
-            "status": status,
-            "raw_text": message_text
-        }
+        return items

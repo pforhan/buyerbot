@@ -6,6 +6,8 @@
 
 - **Summarization**: Quickly understand what's available in a channel without scrolling through hundreds of messages.
 - **Intelligent Search**: Use natural language to find specific items (e.g., "/buyerbot what macbooks are available?").
+- **Multi-Product Support**: A single Slack post can contain multiple items, and BuyerBot will index them individually.
+- **Seller Tracking**: Automatically identifies the Slack user who posted an item, allowing you to click their name to start a DM.
 - **Status Tracking**: Automatically detect if an item is "Sold" by analyzing thread replies and emojis.
 - **Extensibility**: Easily switch between different LLM providers (Mock, Ollama, Claude, Gemini, etc.).
 
@@ -13,11 +15,11 @@
 
 1.  **Request Parsing**: Use an LLM to extract intent and product entities from user commands.
 2.  **Message Analysis**: Use an LLM to analyze historical posts and their threads to extract:
-    - Product Name
-    - Price
+    - Multiple Product Names (if applicable)
+    - Prices
     - Features
     - Availability Status (Available, Sold, Pending)
-3.  **Local Indexing**: Store extracted data in a local SQLite database for fast, efficient searching and to minimize LLM API costs.
+3.  **Local Indexing**: Store extracted data in a local SQLite database (using `Post` and `Item` models) for fast searching.
 4.  **Socket Mode Implementation**: Run locally for development without requiring public endpoints.
 
 ## Project Structure

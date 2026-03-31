@@ -1,8 +1,16 @@
-from typing import List
+from typing import List, Dict
 from slack_sdk import WebClient
 from llm import LLMProvider
 from db import save_items_for_post
 from logger import log_basic
+
+def _get_text_with_reactions(msg: Dict) -> str:
+    text = msg.get("text", "")
+    reactions = msg.get("reactions", [])
+    if reactions:
+        reaction_names = [r.get("name") for r in reactions]
+        text += f" [Reactions: {', '.join(reaction_names)}]"
+    return text
 
 def sync_channel(client: WebClient, channel_id: str, llm: LLMProvider):
     """
@@ -21,14 +29,14 @@ def sync_channel(client: WebClient, channel_id: str, llm: LLMProvider):
             continue
             
         ts = msg.get("ts")
-        text = msg.get("text", "")
+        text = _get_text_with_reactions(msg)
         user_id = msg.get("user", "Unknown")
         
         # Fetch thread replies if any
         replies = []
         if msg.get("thread_ts") or msg.get("reply_count", 0) > 0:
             reply_resp = client.conversations_replies(channel=channel_id, ts=ts)
-            replies = [r.get("text", "") for r in reply_resp.get("messages", [])[1:]] # Skip main post
+            replies = [_get_text_with_reactions(r) for r in reply_resp.get("messages", [])[1:]] # Skip main post
             
         # Analyze with LLM (returns a list of items)
         items_analysis = llm.analyze_post(text, replies)

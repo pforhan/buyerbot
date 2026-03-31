@@ -7,7 +7,7 @@ This document tracks planned features, improvements, and technical debt for the 
 - [ ] **Error Handling & Robustness**: Add more comprehensive `try/except` blocks around LLM parsing, especially for non-standard JSON responses.
 - [x] **Multi-Product Support**: A single Slack post can contain multiple items, and BuyerBot will index them individually.
 - [x] **Seller Tracking**: Automatically identifies the Slack user who posted an item.
-- [ ] **Sold Status Detection**: Improve the logic for detecting "Sold" status by specifically looking for common emojis (e.g., :white_check_mark:, :x:) and key phrases in thread replies.
+- [x] **Sold Status Detection**: Improved the logic for detecting "Sold" status by passing message reactions and strikethrough formatting to the LLM.
 
 ## LLM Providers
 - [ ] **Claude (Anthropic)**: Add an `AnthropicProvider` using the `anthropic` Python SDK.

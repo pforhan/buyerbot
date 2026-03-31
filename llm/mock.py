@@ -20,8 +20,18 @@ class MockProvider(LLMProvider):
     def analyze_post(self, message_text: str, thread_replies: List[str]) -> List[Dict]:
         # Mock analysis
         text = message_text.lower()
+        all_text = (text + " " + " ".join(r.lower() for r in thread_replies))
+        
         status = "Available"
-        if "sold" in text or any("sold" in r.lower() for r in thread_replies):
+        
+        # Check for "sold" indicators: "sold" keyword, strikethrough ~, or checkmark reaction
+        if (
+            "sold" in all_text or 
+            "~" in message_text or 
+            "heavy_check_mark" in all_text or 
+            "white_check_mark" in all_text or
+            "moneybag" in all_text
+        ):
             status = "Sold"
         
         # Simple extraction

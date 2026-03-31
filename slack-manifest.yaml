@@ -1,0 +1,34 @@
+_metadata:
+  major_version: 1
+  minor_version: 1
+display_information:
+  name: BuyerBot
+  description: Summarize buy/sell channel history.
+  background_color: "#1e1e2e"
+features:
+  bot_user:
+    display_name: BuyerBot
+    always_online: true
+  slash_commands:
+    - command: /buyerbot
+      description: Search for available items.
+      usage_hint: "[query]"
+      should_escape: false
+    - command: /buyerbot-sync
+      description: Sync current channel history.
+      should_escape: false
+oauth_config:
+  scopes:
+    bot:
+      - commands
+      - channels:history
+      - groups:history
+      - im:history
+      - mpim:history
+settings:
+  event_subscriptions:
+    bot_events:
+      - message.channels
+  interactivity:
+    is_enabled: true
+  socket_mode_enabled: true

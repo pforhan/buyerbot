@@ -1,0 +1,7 @@
+slack-bolt
+python-dotenv
+httpx
+sqlmodel
+sqlalchemy
+pydantic
+slack_sdk

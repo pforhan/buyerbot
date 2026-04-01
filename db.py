@@ -5,7 +5,7 @@ import time
 class Post(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     slack_ts: str = Field(index=True, unique=True)
-    channel_id: str
+    channel_id: str = Field(index=True)
     user_id: str
     last_updated: float = Field(default_factory=time.time)
     
@@ -63,7 +63,12 @@ def save_items_for_post(slack_ts: str, channel_id: str, user_id: str, items_data
             
         session.commit()
 
-def search_items(product_query: str) -> List[Item]:
+def search_items(product_query: str, channel_id: str) -> List[Item]:
     with Session(engine) as session:
-        statement = select(Item).where(Item.product_name.contains(product_query))
+        statement = (
+            select(Item)
+            .join(Post)
+            .where(Post.channel_id == channel_id)
+            .where(Item.product_name.contains(product_query))
+        )
         return list(session.exec(statement).all())

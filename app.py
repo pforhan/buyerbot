@@ -27,7 +27,8 @@ def handle_command(ack, respond, command):
     
     query_text = command["text"]
     user_id = command["user_id"]
-    log_basic(f"Received /buyerbot command from {user_id}: {query_text}")
+    channel_id = command["channel_id"]
+    log_basic(f"Received /buyerbot command from {user_id} in {channel_id}: {query_text}")
     
     respond(f"Searching for items related to: {query_text}...")
     
@@ -35,8 +36,8 @@ def handle_command(ack, respond, command):
     parsed = llm.parse_request(query_text)
     product = parsed.get("product", query_text) # Fallback to original text
     
-    # 2. Search DB for items
-    matches = search_items(product)
+    # 2. Search DB for items (segmented by channel)
+    matches = search_items(product, channel_id)
     log_basic(f"Search for '{product}' returned {len(matches)} results.")
     
     if not matches:

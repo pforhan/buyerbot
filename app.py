@@ -259,13 +259,13 @@ def action_handle_open_add(ack, body, client):
     ack()
     # If this came from a modal (overview), private_metadata might contain channel_id
     channel_id = body.get("view", {}).get("private_metadata", "")
-    client.views_push(trigger_id=body["trigger_id"], view=get_item_modal("Add Listing", "add_item_modal", "Sale", {"channel_id": channel_id}))
+    client.views_update(view_id=body["view"]["id"], view=get_item_modal("Add Listing", "add_item_modal", "Sale", {"channel_id": channel_id}))
 
 @app.action("open_seeking_modal")
 def action_handle_open_seeking(ack, body, client):
     ack()
     channel_id = body.get("view", {}).get("private_metadata", "")
-    client.views_push(trigger_id=body["trigger_id"], view=get_item_modal("Seeking Item", "add_item_modal", "Seeking", {"channel_id": channel_id}))
+    client.views_update(view_id=body["view"]["id"], view=get_item_modal("Seeking Item", "add_item_modal", "Seeking", {"channel_id": channel_id}))
 
 @app.action("open_my_listings")
 def action_open_my_listings(ack, body, client):
@@ -275,8 +275,8 @@ def action_open_my_listings(ack, body, client):
     
     if not items:
         # Show a simple modal or push a message
-        client.views_push(
-            trigger_id=body["trigger_id"],
+        client.views_update(
+            view_id=body["view"]["id"],
             view={
                 "type": "modal",
                 "title": {"type": "plain_text", "text": "My Listings"},
@@ -287,8 +287,8 @@ def action_open_my_listings(ack, body, client):
         return
 
     blocks = get_user_listing_blocks(items)
-    client.views_push(
-        trigger_id=body["trigger_id"],
+    client.views_update(
+        view_id=body["view"]["id"],
         view={
             "type": "modal",
             "title": {"type": "plain_text", "text": "My Listings"},
@@ -306,8 +306,17 @@ def action_trigger_sync(ack, body, client):
     if not channel_id:
          client.chat_postEphemeral(channel=user_id, user=user_id, text="Please use `/buyerbot sync` in a specific channel.")
          return
-         
-    client.chat_postEphemeral(channel=channel_id, user=user_id, text="Syncing channel history...")
+
+    client.views_update(
+         view_id=body["view"]["id"],
+         view={
+             "type": "modal",
+             "title": {"type": "plain_text", "text": "Syncing..."},
+             "blocks": [{"type": "section", "text": {"type": "mrkdwn", "text": "Channel sync has started. You can close this window; results will appear in the channel."}}],
+             "close": {"type": "plain_text", "text": "Close"}
+         }
+    )
+    
     sync_channel(app.client, channel_id, llm)
     client.chat_postEphemeral(channel=channel_id, user=user_id, text="Sync complete!")
 
@@ -354,10 +363,16 @@ def handle_overflow(ack, body, respond, client):
                     "price": item.price,
                     "features": item.features
                 }
-                client.views_open(
-                    trigger_id=body["trigger_id"], 
-                    view=get_item_modal(f"Edit {item.product_name}", "edit_item_modal", item.post_type, initial_data)
-                )
+                if "view" in body:
+                    client.views_update(
+                        view_id=body["view"]["id"],
+                        view=get_item_modal(f"Edit {item.product_name}", "edit_item_modal", item.post_type, initial_data)
+                    )
+                else:
+                    client.views_open(
+                        trigger_id=body["trigger_id"], 
+                        view=get_item_modal(f"Edit {item.product_name}", "edit_item_modal", item.post_type, initial_data)
+                    )
 
 @app.view("add_item_modal")
 def handle_add_item_submit(ack, body, client, view):

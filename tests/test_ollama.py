@@ -81,6 +81,8 @@ def test_ollama_analyze_single_item():
         assert "product_name" in item
         assert "price" in item
         assert "status" in item
+        assert "post_type" in item
+        assert item["post_type"] == "Sale"
         print(f"✓ Single item analysis successful: {item}")
     except Exception as e:
         pytest.fail(f"Single item analysis test failed: {e}")
@@ -108,13 +110,58 @@ def test_ollama_analyze_multiple_items():
         
         assert macbook is not None
         assert iphone is not None
+        assert macbook["post_type"] == "Sale"
+        assert iphone["post_type"] == "Sale"
         
         print(f"✓ Multiple items analysis successful. Found {len(items)} items.")
         for i in items:
-            print(f"  - {i['product_name']} ({i['status']}): {i['price']}")
+            print(f"  - {i['product_name']} ({i['status']}, {i['post_type']}): {i['price']}")
             
     except Exception as e:
         pytest.fail(f"Multiple items analysis test failed: {e}")
+
+def test_ollama_analyze_seeking_item():
+    """
+    Test if Ollama correctly identifies a 'Seeking' (WTB) post.
+    """
+    model = os.environ.get("OLLAMA_MODEL", "llama3")
+    provider = OllamaProvider(model=model)
+    
+    msg_text = "Anyone have a used Macbook Pro for sale? Looking to buy one for around $800."
+    replies = []
+    
+    print(f"\nTesting analysis of a 'Seeking' post: '{msg_text}'...")
+    
+    try:
+        items = provider.analyze_post(msg_text, replies)
+        assert isinstance(items, list)
+        assert len(items) >= 1
+        item = items[0]
+        assert "macbook" in item["product_name"].lower()
+        assert item["post_type"] == "Seeking"
+        print(f"✓ Seeking item analysis successful: {item}")
+    except Exception as e:
+        pytest.fail(f"Seeking item analysis test failed: {e}")
+
+def test_ollama_analyze_conversational_post():
+    """
+    Test if Ollama correctly ignores a conversational post.
+    """
+    model = os.environ.get("OLLAMA_MODEL", "llama3")
+    provider = OllamaProvider(model=model)
+    
+    msg_text = "What time is the lunch meeting tomorrow?"
+    replies = ["I think it's at 12:30", "Thanks!"]
+    
+    print(f"\nTesting analysis of a conversational post: '{msg_text}'...")
+    
+    try:
+        items = provider.analyze_post(msg_text, replies)
+        assert isinstance(items, list)
+        assert len(items) == 0
+        print("✓ Conversational post successfully ignored (0 items found).")
+    except Exception as e:
+        pytest.fail(f"Conversational post analysis test failed: {e}")
 
 if __name__ == "__main__":
     # Allow running this script directly without pytest
@@ -123,6 +170,8 @@ if __name__ == "__main__":
         test_ollama_json_parsing()
         test_ollama_analyze_single_item()
         test_ollama_analyze_multiple_items()
+        test_ollama_analyze_seeking_item()
+        test_ollama_analyze_conversational_post()
         print("\nAll Ollama integration tests passed!")
     except Exception as e:
         print(f"\nTests failed: {e}")

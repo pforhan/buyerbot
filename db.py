@@ -18,6 +18,7 @@ class Item(SQLModel, table=True):
     price: str
     status: str
     features: str
+    post_type: str = Field(default="Sale") # "Sale" or "Seeking"
     
     post: Post = Relationship(back_populates="items")
 
@@ -57,7 +58,8 @@ def save_items_for_post(slack_ts: str, channel_id: str, user_id: str, items_data
                 product_name=item_data.get("product_name", "Unknown"),
                 price=str(item_data.get("price", "unknown")),
                 status=item_data.get("status", "Available"),
-                features=", ".join(item_data.get("features", [])) if isinstance(item_data.get("features"), list) else str(item_data.get("features", ""))
+                features=", ".join(item_data.get("features", [])) if isinstance(item_data.get("features"), list) else str(item_data.get("features", "")),
+                post_type=item_data.get("post_type", "Sale")
             )
             session.add(item)
             

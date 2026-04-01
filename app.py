@@ -66,9 +66,10 @@ def handle_command(ack, respond, command):
                 "type": "mrkdwn",
                 "text": (
                     f"*Product*: {item.product_name}\n"
+                    f"*Type*: {item.post_type}\n"
                     f"*Price*: {item.price}\n"
                     f"*Status*: {item.status}\n"
-                    f"*Seller*: {seller_mention}\n"
+                    f"*Seller/User*: {seller_mention}\n"
                     f"*Features*: {item.features}"
                 )
             }

@@ -78,6 +78,59 @@
 
 ## Usage
 
-1.  Invite the bot to your target channel: `/invite @BuyerBot`.
-2.  Run `/buyerbot-sync` to index the channel history.
-3.  Use `/buyerbot <query>` to search for items.
+1. Invite the bot to your target channel: `/invite @BuyerBot`.
+2. Run `/buyerbot-sync` to index the channel history.
+3. Use `/buyerbot <query>` to search for items.
+
+## Testing
+
+This project uses `pytest` for testing.
+
+### Running Tests
+
+It's recommended to run tests from within the project's virtual environment to ensure all dependencies are correctly loaded.
+
+1.  **Activate the Virtual Environment** (if not already):
+    ```bash
+    source .venv/bin/activate
+    ```
+
+2.  **Ensure Test Dependencies are Installed**:
+    ```bash
+    pip install pytest
+    ```
+
+3.  **Run All Tests**:
+    ```bash
+    pytest
+    ```
+    *Alternatively, you can run tests without activating the venv by using the venv's python directly:*
+    ```bash
+    ./.venv/bin/python3 -m pytest
+    ```
+
+4.  **Run Specific Tests**:
+    ```bash
+    pytest tests/test_ollama.py
+    ```
+
+### Debugging and Logging in Tests
+
+By default, `pytest` captures all standard output and only shows it on test failure. To see the output of passing tests (including LLM prompts and responses), use the `-s` flag.
+
+You can control the verbosity of the output using the `DEBUG_LEVEL` environment variable:
+- `none` (default): No diagnostic output from the application.
+- `basic`: Shows high-level status messages.
+- `full`: Shows detailed logs, including full LLM interaction prompts and JSON responses.
+
+**Example**:
+```bash
+# Run tests with full LLM diagnostic output
+DEBUG_LEVEL=full pytest -s tests/test_ollama.py
+```
+
+**Note**: Some tests (like the Ollama integration tests) require a local Ollama instance running and accessible. You can configure the model and timeout via environment variables in your `.env` file:
+- `OLLAMA_MODEL`: The model to use (defaults to `llama3`).
+- `OLLAMA_TIMEOUT`: Timeout for Ollama requests (defaults to `60` seconds).
+- `DEBUG_LEVEL`: Verbosity for diagnostic output (`none`, `basic`, `full`).
+

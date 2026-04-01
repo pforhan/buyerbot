@@ -181,19 +181,15 @@ def handle_add_listing(text, user_id, channel_id, trigger_id, client, respond, p
         from db import Item
         dummy_item = Item(product_name=item_data["product_name"], price=str(item_data["price"]), features=", ".join(item_data["features"]), post_type=post_type)
         
-        result = client.chat_postMessage(channel=channel_id, blocks=format_listing_blocks(dummy_item, user_id))
+        text = f"New {post_type} listing: {dummy_item.product_name}"
+        result = client.chat_postMessage(channel=channel_id, text=text, blocks=format_listing_blocks(dummy_item, user_id))
         ts = result["ts"]
         
         save_items_for_post(slack_ts=ts, channel_id=channel_id, user_id=user_id, items_data=[item_data], is_direct=True)
     
     respond(f"✅ Listing created in <#{channel_id}>!")
 
-def handle_list_user_items(user_id, respond):
-    items = get_user_items(user_id)
-    if not items:
-        respond("You don't have any listings yet. Use `/buyerbot add` to create one!")
-        return
-
+def get_user_listing_blocks(items):
     blocks = [{"type": "header", "text": {"type": "plain_text", "text": "My Listings"}}, {"type": "divider"}]
     
     for item in items:
@@ -212,7 +208,15 @@ def handle_list_user_items(user_id, respond):
                 ]
             }
         })
-    
+    return blocks
+
+def handle_list_user_items(user_id, respond):
+    items = get_user_items(user_id)
+    if not items:
+        respond("You don't have any listings yet. Use `/buyerbot add` to create one!")
+        return
+
+    blocks = get_user_listing_blocks(items)
     respond(blocks=blocks)
 
 def handle_search(query, channel_id, respond):
@@ -264,44 +268,81 @@ def action_handle_open_seeking(ack, body, client):
     client.views_push(trigger_id=body["trigger_id"], view=get_item_modal("Seeking Item", "add_item_modal", "Seeking", {"channel_id": channel_id}))
 
 @app.action("open_my_listings")
-def action_open_my_listings(ack, body, respond):
+def action_open_my_listings(ack, body, client):
     ack()
     user_id = body["user"]["id"]
-    handle_list_user_items(user_id, respond)
+    items = get_user_items(user_id)
+    
+    if not items:
+        # Show a simple modal or push a message
+        client.views_push(
+            trigger_id=body["trigger_id"],
+            view={
+                "type": "modal",
+                "title": {"type": "plain_text", "text": "My Listings"},
+                "close": {"type": "plain_text", "text": "Close"},
+                "blocks": [{"type": "section", "text": {"type": "mrkdwn", "text": "You don't have any listings yet. Use `/buyerbot add` to create one!"}}]
+            }
+        )
+        return
+
+    blocks = get_user_listing_blocks(items)
+    client.views_push(
+        trigger_id=body["trigger_id"],
+        view={
+            "type": "modal",
+            "title": {"type": "plain_text", "text": "My Listings"},
+            "close": {"type": "plain_text", "text": "Close"},
+            "blocks": blocks
+        }
+    )
 
 @app.action("trigger_sync")
-def action_trigger_sync(ack, body, respond):
+def action_trigger_sync(ack, body, client):
     ack()
-    # For sync from overview modal, we might need to know which channel. 
-    # If private_metadata is empty, we can't sync easily.
     channel_id = body.get("view", {}).get("private_metadata", "")
+    user_id = body["user"]["id"]
+    
     if not channel_id:
-         respond("Please use `/buyerbot sync` in a specific channel.")
+         client.chat_postEphemeral(channel=user_id, user=user_id, text="Please use `/buyerbot sync` in a specific channel.")
          return
-    respond("Syncing channel history...")
+         
+    client.chat_postEphemeral(channel=channel_id, user=user_id, text="Syncing channel history...")
     sync_channel(app.client, channel_id, llm)
-    respond("Sync complete!")
+    client.chat_postEphemeral(channel=channel_id, user=user_id, text="Sync complete!")
 
 @app.action("listing_overflow_action")
 def handle_overflow(ack, body, respond, client):
     ack()
+    user_id = body["user"]["id"]
+    channel_id = body.get("view", {}).get("private_metadata", "") or body.get("channel", {}).get("id", "")
+    
     selected_option = body["actions"][0]["selected_option"]["value"]
     action_type, item_id_str = selected_option.split(":")
     item_id = int(item_id_str)
     
+    def safe_respond(msg):
+        # If we have a response_url (respond works), use it.
+        # Otherwise fall back to chat_postEphemeral.
+        try:
+            respond(msg)
+        except ValueError:
+            if channel_id:
+                client.chat_postEphemeral(channel=channel_id, user=user_id, text=msg)
+    
     if action_type == "sold":
         update_item_status(item_id, "Sold")
-        respond(f"Item marked as Sold.")
+        safe_respond(f"Item marked as Sold.")
     elif action_type == "obsolete":
         update_item_status(item_id, "Obsolete")
-        respond(f"Item marked as Obsolete.")
+        safe_respond(f"Item marked as Obsolete.")
     elif action_type == "delete":
         from db import Item, Session, engine
         with Session(engine) as session:
             item = session.get(Item, item_id)
             if item:
                 delete_post(item.post_id)
-                respond("Listing deleted.")
+                safe_respond("Listing deleted.")
     elif action_type == "edit":
         from db import Item, Session, engine
         with Session(engine) as session:
@@ -337,7 +378,8 @@ def handle_add_item_submit(ack, body, client, view):
     from db import Item
     dummy_item = Item(product_name=product_name, price=price, features=features, post_type=post_type)
     
-    result = client.chat_postMessage(channel=channel_id, blocks=format_listing_blocks(dummy_item, user_id))
+    text = f"New {post_type} listing: {dummy_item.product_name}"
+    result = client.chat_postMessage(channel=channel_id, text=text, blocks=format_listing_blocks(dummy_item, user_id))
     ts = result["ts"]
     
     save_items_for_post(

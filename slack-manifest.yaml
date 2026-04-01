@@ -4,6 +4,7 @@ _metadata:
 display_information:
   name: BuyerBot
   description: Summarize buy/sell channel history.
+  long_description: Slack app to summarize buy/sell channel history.  Ask for recent listings, investigate features and prices, etc.  Tries to determine if items have been sold already.  Try `/buyerbot-sync` to refresh channel history.
   background_color: "#1e1e2e"
 features:
   bot_user:
@@ -25,6 +26,8 @@ oauth_config:
       - groups:history
       - im:history
       - mpim:history
+      - chat:write
+      - chat:write.public
 settings:
   event_subscriptions:
     bot_events:

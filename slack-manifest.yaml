@@ -11,8 +11,8 @@ features:
     always_online: true
   slash_commands:
     - command: /buyerbot
-      description: Search for available items.
-      usage_hint: "[query]"
+      description: Add, search, or manage listings (add, seeking, list, search).
+      usage_hint: "[subcommand] [args]"
       should_escape: false
     - command: /buyerbot-sync
       description: Sync current channel history.

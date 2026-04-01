@@ -78,9 +78,35 @@
 
 ## Usage
 
-1. Invite the bot to your target channel: `/invite @BuyerBot`.
-2. Run `/buyerbot-sync` to index the channel history.
-3. Use `/buyerbot <query>` to search for items.
+1.  **Invite the bot**: Invite @BuyerBot to your buy/sell channel.
+2.  **Sync History**: Run `/buyerbot sync` (or `/buyerbot-sync`) to index existing channel messages.
+3.  **Search**: Use `/buyerbot search <query>` (or just `/buyerbot <query>`) to find items.
+4.  **Add Listings**: Use `/buyerbot add <description>` to list an item for sale.
+5.  **Seek Items**: Use `/buyerbot seeking <description>` if you are looking for something.
+6.  **Manage Dashboard**: Type `/buyerbot` (empty) to open the **Overview Modal** for quick actions.
+7.  **Manage Your Items**: Run `/buyerbot list` (or `manage`) to see and edit your active listings.
+
+## Direct Listing & Management
+
+BuyerBot allows users to bypass historical parsing and list items directly. These "Direct Listings" are prioritized in search results and come with built-in management tools.
+
+### Subcommands
+- `/buyerbot add Selling my bike for $100`: Immediately creates a structured "Sale" listing.
+- `/buyerbot seeking Looking for an IKEA desk`: Creates a "Seeking" (WTB) entry.
+- `/buyerbot list`: Shows an ephemeral dashboard of your entries.
+
+### Management Dashboard
+From the `/buyerbot list` dashboard, you can:
+- **Mark Sold**: Hide the item from search results (for sales).
+- **Mark Obsolete**: Mark a seeking request as no longer needed.
+- **Edit**: Update the name, price, or description via a Modal.
+- **Delete**: Permanently remove the listing.
+
+### Overview Modal
+Simply typing `/buyerbot` without any arguments opens a central hub. From here, you can:
+- Open the **Add Listing** or **Seeking Item** forms.
+- View **My Listings**.
+- Trigger a **Sync** of the current channel.
 
 ## Testing
 

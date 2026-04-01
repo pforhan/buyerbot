@@ -12,6 +12,11 @@ class OllamaProvider(LLMProvider):
 
     def _call_ollama(self, prompt: str) -> Dict:
         log_full(f"Ollama Prompt: {prompt}")
+        
+        # Get timeout from environment, default to 60s. Use None if 0.
+        timeout_env = os.environ.get("OLLAMA_TIMEOUT", "60")
+        timeout = float(timeout_env) if timeout_env != "0" else None
+        
         payload = {
             "model": self.model,
             "prompt": prompt,
@@ -19,13 +24,21 @@ class OllamaProvider(LLMProvider):
             "format": "json"
         }
         try:
-            response = httpx.post(self.base_url, json=payload, timeout=30.0)
+            response = httpx.post(self.base_url, json=payload, timeout=timeout)
             response.raise_for_status()
-            raw_response = response.json()["response"]
-            log_full(f"Ollama Raw Response: {raw_response}")
-            return json.loads(raw_response)
+            data = response.json()
+            
+            # Handle standard Ollama 'response' or models using 'thinking' field (like Qwen-VL)
+            raw_content = data.get("response", "")
+            if not raw_content and "thinking" in data:
+                raw_content = data.get("thinking", "")
+            
+            log_full(f"Ollama Raw Content: {raw_content}")
+            return json.loads(raw_content)
         except Exception as e:
             print(f"Error calling Ollama: {e}")
+            if 'response' in locals():
+                print(f"DEBUG: Raw response content: {response.text}")
             return {}
 
     def parse_request(self, query: str) -> Dict:

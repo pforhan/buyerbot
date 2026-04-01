@@ -40,6 +40,7 @@
 - Python 3.10+
 - A Slack Workspace (Free tier works great!)
 - (Optional) [Ollama](https://ollama.com/) for local LLM support.
+  - **Tip**: For faster processing on local hardware, try smaller models like `nemotron-mini` or `llama3`.
 
 ### Setup
 

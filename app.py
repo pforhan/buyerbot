@@ -177,9 +177,23 @@ def handle_add_listing(text, user_id, channel_id, trigger_id, client, respond, p
     # Post to channel publicly
     for item_data in items_analysis:
         item_data["post_type"] = post_type
+        # Explicitly ensure newly added items are "Available"
+        item_data["status"] = "Available"
+        
         # We need a dummy object to format
         from db import Item
-        dummy_item = Item(product_name=item_data["product_name"], price=str(item_data["price"]), features=", ".join(item_data["features"]), post_type=post_type)
+        features_str = item_data.get("features", [])
+        if isinstance(features_str, list):
+            features_str = ", ".join(features_str)
+            
+        dummy_item = Item(
+            product_name=item_data.get("product_name", "Unknown"), 
+            price=str(item_data.get("price", "unknown")), 
+            features=features_str,
+            post_type=post_type,
+            status="Available", # Required by model constructor
+            post_id=0 # Temporary post_id for model constructor
+        )
         
         text = f"New {post_type} listing: {dummy_item.product_name}"
         result = client.chat_postMessage(channel=channel_id, text=text, blocks=format_listing_blocks(dummy_item, user_id))

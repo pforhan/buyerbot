@@ -28,18 +28,38 @@ class OllamaProvider(LLMProvider):
             response = httpx.post(self.base_url, json=payload, timeout=timeout)
             response.raise_for_status()
             data = response.json()
-            
             # Handle standard Ollama 'response' or models using 'thinking' field (like Qwen-VL)
             raw_content = data.get("response", "")
             if not raw_content and "thinking" in data:
                 raw_content = data.get("thinking", "")
             
             log_full(f"Ollama Raw Content: {raw_content}")
+            
+            # Try to handle Markdown or prefix/suffix text
+            processed_content = raw_content.strip()
+            
+            # Find the first { or [ and last } or ]
+            start_idx = processed_content.find('{')
+            if start_idx == -1:
+                start_idx = processed_content.find('[')
+            
+            end_idx = processed_content.rfind('}')
+            if end_idx == -1:
+                end_idx = processed_content.rfind(']')
+                
+            if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+                json_part = processed_content[start_idx:end_idx+1]
+                try:
+                    return json.loads(json_part)
+                except json.JSONDecodeError:
+                    log_full(f"Ollama JSON extraction failed on snippet: {json_part}")
+            
+            # Fallback to direct parse
             return json.loads(raw_content)
         except Exception as e:
             print(f"Error calling Ollama: {e}")
             if 'response' in locals():
-                print(f"DEBUG: Raw response content: {response.text}")
+                log_full(f"DEBUG: Raw response content: {response.text}")
             return {}
 
     def parse_request(self, query: str) -> Dict:
@@ -53,4 +73,6 @@ class OllamaProvider(LLMProvider):
             thread_replies_text=thread_replies_text
         )
         result = self._call_ollama(prompt)
+        if isinstance(result, list):
+            return result
         return result.get("items", [])

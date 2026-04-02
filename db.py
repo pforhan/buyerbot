@@ -16,10 +16,10 @@ class Post(SQLModel, table=True):
 class Item(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     post_id: int = Field(foreign_key="post.id")
-    product_name: str
-    price: str
-    status: str
-    features: str
+    product_name: str = Field(default="Unknown")
+    price: str = Field(default="unknown")
+    status: str = Field(default="Available")
+    features: str = Field(default="")
     post_type: str = Field(default="Sale") # "Sale" or "Seeking"
     
     post: Post = Relationship(back_populates="items")
@@ -59,7 +59,7 @@ def save_items_for_post(slack_ts: str, channel_id: str, user_id: str, items_data
                 post_id=post.id,
                 product_name=item_data.get("product_name", "Unknown"),
                 price=str(item_data.get("price", "unknown")),
-                status=item_data.get("status", "Available"),
+                status=item_data.get("status") or "Available",
                 features=", ".join(item_data.get("features", [])) if isinstance(item_data.get("features"), list) else str(item_data.get("features", "")),
                 post_type=item_data.get("post_type", "Sale")
             )

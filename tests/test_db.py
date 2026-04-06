@@ -24,6 +24,7 @@ def test_search_items_segmentation(monkeypatch):
     save_items_for_post(
         slack_ts="ts1", 
         channel_id="C_ALFA", 
+        team_id="T123",
         user_id="U_ALFA", 
         items_data=[{"product_name": "Macbook", "price": 1000, "status": "Available"}]
     )
@@ -32,22 +33,23 @@ def test_search_items_segmentation(monkeypatch):
     save_items_for_post(
         slack_ts="ts2", 
         channel_id="C_BRAVO", 
+        team_id="T123",
         user_id="U_BRAVO", 
         items_data=[{"product_name": "Macbook", "price": 2000, "status": "Available"}]
     )
 
     # 3. Search in channel A
-    results_a = search_items("Macbook", "C_ALFA")
+    results_a = search_items("Macbook", "C_ALFA", "T123")
     assert len(results_a) == 1
     assert results_a[0].product_name == "Macbook"
     assert results_a[0].price == "1000"
     
     # 4. Search in channel B
-    results_b = search_items("Macbook", "C_BRAVO")
+    results_b = search_items("Macbook", "C_BRAVO", "T123")
     assert len(results_b) == 1
     assert results_b[0].product_name == "Macbook"
     assert results_b[0].price == "2000"
     
     # 5. Search for something non-existent in channel A
-    results_none = search_items("iPhone", "C_ALFA")
+    results_none = search_items("iPhone", "C_ALFA", "T123")
     assert len(results_none) == 0

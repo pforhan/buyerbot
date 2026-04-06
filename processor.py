@@ -17,6 +17,15 @@ def sync_channel(client: WebClient, channel_id: str, team_id: str, llm: LLMProvi
     Fetch history from a channel and analyze posts.
     """
     log_basic(f"Starting sync for channel: {channel_id} (team: {team_id})")
+    
+    # Get the bot's own user ID to ignore its posts
+    bot_user_id = None
+    try:
+        auth_resp = client.auth_test()
+        bot_user_id = auth_resp.get("user_id")
+    except Exception as e:
+        log_basic(f"Warning: Could not fetch bot user ID: {e}")
+
     response = client.conversations_history(channel=channel_id, limit=50)
     messages = response.get("messages", [])
     
@@ -24,19 +33,28 @@ def sync_channel(client: WebClient, channel_id: str, team_id: str, llm: LLMProvi
     item_count = 0
     
     for msg in messages:
+        user_id = msg.get("user", "Unknown")
+        
         # Ignore bots and subtype messages (like join/leave)
-        if msg.get("bot_id") or msg.get("subtype"):
+        # Also specifically ignore the bot's own user ID
+        if msg.get("bot_id") or msg.get("subtype") or (bot_user_id and user_id == bot_user_id):
             continue
             
         ts = msg.get("ts")
         text = _get_text_with_reactions(msg)
-        user_id = msg.get("user", "Unknown")
         
         # Fetch thread replies if any
         replies = []
         if msg.get("thread_ts") or msg.get("reply_count", 0) > 0:
             reply_resp = client.conversations_replies(channel=channel_id, ts=ts)
-            replies = [_get_text_with_reactions(r) for r in reply_resp.get("messages", [])[1:]] # Skip main post
+            reply_msgs = reply_resp.get("messages", [])[1:] # Skip main post
+            
+            # Filter out bot replies
+            for r in reply_msgs:
+                r_user = r.get("user")
+                if r.get("bot_id") or (bot_user_id and r_user == bot_user_id):
+                    continue
+                replies.append(_get_text_with_reactions(r))
             
         # Analyze with LLM (returns a list of items)
         items_analysis = llm.analyze_post(text, replies)

@@ -11,15 +11,21 @@ from db import (
     get_user_items, 
     update_item_status, 
     update_item_details, 
-    delete_post
+    delete_post,
+    engine,
+    SQLModelInstallationStore
 )
 from processor import sync_channel
 from logger import log_basic
 
 load_dotenv()
 
-# Initialize Slack App
-app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
+# Initialize Slack App with Installation Store for multi-workspace support
+app = App(
+    signing_secret=os.environ.get("SLACK_SIGNING_SECRET"),
+    installation_store=SQLModelInstallationStore(engine),
+    token_verification_enabled=False # Since we use installation_store
+)
 
 # Select LLM Provider
 provider_type = os.environ.get("LLM_PROVIDER", "mock").lower()
@@ -136,6 +142,7 @@ def handle_command(ack, body, respond, command, client):
     text = command["text"].strip()
     user_id = command["user_id"]
     channel_id = command["channel_id"]
+    team_id = command["team_id"]
     trigger_id = body["trigger_id"]
     
     if not text:
@@ -147,20 +154,20 @@ def handle_command(ack, body, respond, command, client):
     args = parts[1] if len(parts) > 1 else ""
 
     if subcommand == "add":
-        handle_add_listing(args, user_id, channel_id, trigger_id, client, respond, "Sale")
+        handle_add_listing(args, user_id, channel_id, team_id, trigger_id, client, respond, "Sale")
     elif subcommand == "seeking":
-        handle_add_listing(args, user_id, channel_id, trigger_id, client, respond, "Seeking")
+        handle_add_listing(args, user_id, channel_id, team_id, trigger_id, client, respond, "Seeking")
     elif subcommand in ["list", "manage"]:
-        handle_list_user_items(user_id, respond)
+        handle_list_user_items(user_id, team_id, respond)
     elif subcommand == "search":
-        handle_search(args, channel_id, respond)
+        handle_search(args, channel_id, team_id, respond)
     elif subcommand == "help":
         respond("Usage:\n`/buyerbot add <description>`\n`/buyerbot seeking <description>`\n`/buyerbot list` (manage your items)\n`/buyerbot search <query>`")
     else:
         # Default to search if it doesn't look like a subcommand
-        handle_search(text, channel_id, respond)
+        handle_search(text, channel_id, team_id, respond)
 
-def handle_add_listing(text, user_id, channel_id, trigger_id, client, respond, post_type):
+def handle_add_listing(text, user_id, channel_id, team_id, trigger_id, client, respond, post_type):
     if not text:
         client.views_open(
             trigger_id=trigger_id, 
@@ -199,7 +206,7 @@ def handle_add_listing(text, user_id, channel_id, trigger_id, client, respond, p
         result = client.chat_postMessage(channel=channel_id, text=text, blocks=format_listing_blocks(dummy_item, user_id))
         ts = result["ts"]
         
-        save_items_for_post(slack_ts=ts, channel_id=channel_id, user_id=user_id, items_data=[item_data], is_direct=True)
+        save_items_for_post(slack_ts=ts, channel_id=channel_id, team_id=team_id, user_id=user_id, items_data=[item_data], is_direct=True)
     
     respond(f"✅ Listing created in <#{channel_id}>!")
 
@@ -224,8 +231,8 @@ def get_user_listing_blocks(items):
         })
     return blocks
 
-def handle_list_user_items(user_id, respond):
-    items = get_user_items(user_id)
+def handle_list_user_items(user_id, team_id, respond):
+    items = get_user_items(user_id, team_id)
     if not items:
         respond("You don't have any listings yet. Use `/buyerbot add` to create one!")
         return
@@ -233,10 +240,10 @@ def handle_list_user_items(user_id, respond):
     blocks = get_user_listing_blocks(items)
     respond(blocks=blocks)
 
-def handle_search(query, channel_id, respond):
+def handle_search(query, channel_id, team_id, respond):
     parsed = llm.parse_request(query)
     product = parsed.get("product", query)
-    matches = search_items(product, channel_id)
+    matches = search_items(product, channel_id, team_id)
     
     if not matches:
         respond(f"No active matches found for '{product}'.")
@@ -285,7 +292,8 @@ def action_handle_open_seeking(ack, body, client):
 def action_open_my_listings(ack, body, client):
     ack()
     user_id = body["user"]["id"]
-    items = get_user_items(user_id)
+    team_id = body["team"]["id"]
+    items = get_user_items(user_id, team_id)
     
     if not items:
         # Show a simple modal or push a message
@@ -316,6 +324,7 @@ def action_trigger_sync(ack, body, client):
     ack()
     channel_id = body.get("view", {}).get("private_metadata", "")
     user_id = body["user"]["id"]
+    team_id = body["team"]["id"]
     
     if not channel_id:
          client.chat_postEphemeral(channel=user_id, user=user_id, text="Please use `/buyerbot sync` in a specific channel.")
@@ -331,7 +340,7 @@ def action_trigger_sync(ack, body, client):
          }
     )
     
-    sync_channel(app.client, channel_id, llm)
+    sync_channel(client, channel_id, team_id, llm)
     client.chat_postEphemeral(channel=channel_id, user=user_id, text="Sync complete!")
 
 @app.action("listing_overflow_action")
@@ -392,6 +401,7 @@ def handle_overflow(ack, body, respond, client):
 def handle_add_item_submit(ack, body, client, view):
     ack()
     user_id = body["user"]["id"]
+    team_id = body["team"]["id"]
     channel_id = view.get("private_metadata", "")
     if not channel_id:
         # Fallback if no channel_id provided
@@ -414,6 +424,7 @@ def handle_add_item_submit(ack, body, client, view):
     save_items_for_post(
         slack_ts=ts, 
         channel_id=channel_id, 
+        team_id=team_id,
         user_id=user_id, 
         items_data=[{
             "product_name": product_name,
@@ -440,18 +451,24 @@ def handle_edit_item_submit(ack, body, view):
     update_item_details(item_id, product_name, price, features, post_type)
 
 @app.command("/buyerbot-sync")
-def handle_sync(ack, respond, command):
+def handle_sync(ack, respond, command, client):
     ack()
     channel_id = command["channel_id"]
     user_id = command["user_id"]
-    log_basic(f"Received /buyerbot-sync command from {user_id} for channel {channel_id}")
+    team_id = command["team_id"]
+    log_basic(f"Received /buyerbot-sync command from {user_id} for channel {channel_id} (team {team_id})")
     respond("Syncing channel history... this may take a moment.")
     try:
-        sync_channel(app.client, channel_id, llm)
+        sync_channel(client, channel_id, team_id, llm)
         respond("Sync complete!")
     except Exception as e:
         log_basic(f"Sync failed: {e}")
         respond(f"Sync failed: {e}")
+
+if __name__ == "__main__":
+    create_db_and_tables()
+    handler = SocketModeHandler(app, os.environ.get("SLACK_APP_TOKEN"))
+    handler.start()
 
 if __name__ == "__main__":
     create_db_and_tables()

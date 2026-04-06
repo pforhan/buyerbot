@@ -12,11 +12,11 @@ def _get_text_with_reactions(msg: Dict) -> str:
         text += f" [Reactions: {', '.join(reaction_names)}]"
     return text
 
-def sync_channel(client: WebClient, channel_id: str, llm: LLMProvider):
+def sync_channel(client: WebClient, channel_id: str, team_id: str, llm: LLMProvider):
     """
     Fetch history from a channel and analyze posts.
     """
-    log_basic(f"Starting sync for channel: {channel_id}")
+    log_basic(f"Starting sync for channel: {channel_id} (team: {team_id})")
     response = client.conversations_history(channel=channel_id, limit=50)
     messages = response.get("messages", [])
     
@@ -48,6 +48,7 @@ def sync_channel(client: WebClient, channel_id: str, llm: LLMProvider):
             save_items_for_post(
                 slack_ts=ts,
                 channel_id=channel_id,
+                team_id=team_id,
                 user_id=user_id,
                 items_data=items_analysis
             )

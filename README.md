@@ -61,20 +61,40 @@
     - Go to the [Slack App Dashboard](https://api.slack.com/apps).
     - Create a new app **From a manifest**.
     - Copy the contents of `slack-manifest.yaml` into the manifest editor.
-    - Install the app to your workspace.
-    - Generate an **App-Level Token** with `connections:write` scope.
-    - Copy the **Bot User OAuth Token** from the "OAuth & Permissions" page.
+    - **App-Level Token**: Generate one with the `connections:write` scope (required for Socket Mode).
+    - **OAuth & Permissions**:
+        - Add a **Redirect URL** if you plan to use a public endpoint for the OAuth flow (e.g., `https://your-public-url.com/slack/oauth_redirect`).
 
 4.  **Environment Variables**:
     ```bash
     cp .env.example .env
-    # Edit .env with your tokens and preferred LLM provider
+    # Edit .env with your tokens and preferred LLM provider.
+    # For multi-workspace support, ensure SLACK_SIGNING_SECRET is set.
     ```
 
 5.  **Run the App**:
     ```bash
     python app.py
     ```
+
+## Multi-Workspace Support
+
+BuyerBot is designed to support multiple Slack workspaces simultaneously. It uses an **Installation Store** (backed by SQLite) to manage bot tokens for each workspace.
+
+### How it works:
+- **Socket Mode**: The app connects via a single `SLACK_APP_TOKEN`. This connection can receive events from *any* workspace where the app is installed.
+- **Dynamic Token Retrieval**: When a command or event is received, BuyerBot automatically looks up the correct `bot_token` for that workspace in the `SlackInstallation` table.
+- **Data Isolation**: All listings (`Post` and `Item` models) are tagged with a `team_id`, ensuring that searches and "My Listings" only show data relevant to the current workspace.
+
+### Bootstrapping your first workspace:
+In a production-like environment, the `SlackInstallation` table is populated via the standard [Slack OAuth flow](https://api.slack.com/authentication/oauth-v2). For local development, you can use the provided bootstrapping script to manually register a workspace by entering your **Bot User OAuth Token**.
+
+You can find this token in the [Slack App Dashboard](https://api.slack.com/apps) under **Features > OAuth & Permissions**. It typically starts with `xoxb-`.
+
+```bash
+python bootstrap_workspace.py
+```
+This script will fetch the necessary metadata and save the installation to your local database.
 
 ## Usage
 

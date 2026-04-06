@@ -5,9 +5,17 @@ Return ONLY JSON with keys: "intent", "product". Do not include any other text o
 """
 
 IS_LISTING_PROMPT = """
-Does the following Slack post contain one or more items being offered for sale?
-Answer "YES" if it is a listing for an item, even if it might already be sold.
-Answer "NO" if it is just a question, a comment, or a general message.
+Does the following Slack post offer items for sale?
+Answer "YES" if the post clearly indicates items are being offered for sale by:
+- Stating "for sale", "selling", "offering", or similar phrases.
+- Listing specific items with prices.
+- Listing specific items with an explicit offer to negotiate or a request for offers (e.g., "make offer", "best offer").
+
+Answer "NO" if the post is primarily:
+- A question or general comment.
+- A general announcement, project update, or link to a resource.
+- A user mention.
+- A request to buy or an inquiry about availability, without offering items.
 
 Post: "{message_text}"
 Replies: "{thread_replies_text}"
@@ -36,7 +44,7 @@ Fill in this structure:
 
 Rules:
 - A post may contain multiple items. Add each to the items list.
-- price: number or "unknown".
+- price: number or "make offer" or "unknown".
 - features: list of descriptive attributes.
 - status:
     "Sold" if strikethrough (~like this~) OR reactions include heavy_check_mark, white_check_mark, moneybag, x.

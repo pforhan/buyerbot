@@ -3,6 +3,16 @@ from sqlmodel import Field, SQLModel, Relationship, create_engine, Session, sele
 from sqlalchemy.orm import selectinload
 import time
 
+# --- Content Database (Posts, Items) ---
+sqlite_file_name = "buyerbot.db"
+sqlite_url = f"sqlite:///{sqlite_file_name}"
+engine = create_engine(sqlite_url)
+
+# --- Installation Database (Slack Workspace Tokens) ---
+install_sqlite_file = "installations.db"
+install_sqlite_url = f"sqlite:///{install_sqlite_file}"
+install_engine = create_engine(install_sqlite_url)
+
 class Post(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     slack_ts: str = Field(index=True, unique=True)
@@ -34,13 +44,11 @@ class Item(SQLModel, table=True):
     
     post: Post = Relationship(back_populates="items")
 
-sqlite_file_name = "buyerbot.db"
-sqlite_url = f"sqlite:///{sqlite_file_name}"
-
-engine = create_engine(sqlite_url)
-
 def create_db_and_tables():
-    SQLModel.metadata.create_all(engine)
+    # Only create specific tables in each database
+    Post.__table__.create(engine, checkfirst=True)
+    Item.__table__.create(engine, checkfirst=True)
+    SlackInstallation.__table__.create(install_engine, checkfirst=True)
 
 def save_items_for_post(slack_ts: str, channel_id: str, team_id: str, user_id: str, items_data: List[dict], is_direct: bool = False):
     with Session(engine) as session:

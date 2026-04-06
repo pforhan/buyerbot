@@ -53,3 +53,39 @@ def test_search_items_segmentation(monkeypatch):
     # 5. Search for something non-existent in channel A
     results_none = search_items("iPhone", "C_ALFA", "T123")
     assert len(results_none) == 0
+
+def test_search_items_team_segmentation(monkeypatch):
+    # Setup - use an in-memory database
+    engine = create_engine("sqlite:///:memory:")
+    SQLModel.metadata.create_all(engine)
+    
+    import db
+    monkeypatch.setattr(db, "engine", engine)
+
+    # 1. Save items in Team 1
+    save_items_for_post(
+        slack_ts="ts1", 
+        channel_id="C_SAME", 
+        team_id="T1",
+        user_id="U_1", 
+        items_data=[{"product_name": "Macbook", "price": 1000, "status": "Available"}]
+    )
+    
+    # 2. Save items in Team 2 with SAME channel ID
+    save_items_for_post(
+        slack_ts="ts2", 
+        channel_id="C_SAME", 
+        team_id="T2",
+        user_id="U_2", 
+        items_data=[{"product_name": "Macbook", "price": 2000, "status": "Available"}]
+    )
+
+    # 3. Search in Team 1
+    results_1 = search_items("Macbook", "C_SAME", "T1")
+    assert len(results_1) == 1
+    assert results_1[0].price == "1000"
+    
+    # 4. Search in Team 2
+    results_2 = search_items("Macbook", "C_SAME", "T2")
+    assert len(results_2) == 1
+    assert results_2[0].price == "2000"

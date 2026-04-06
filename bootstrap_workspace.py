@@ -2,12 +2,12 @@ import os
 import sys
 from slack_sdk import WebClient
 from slack_sdk.oauth.installation_store import Installation
-from db import SQLModelInstallationStore, engine, create_db_and_tables
+from db import SQLModelInstallationStore, engine, install_engine, create_db_and_tables
 
 def bootstrap():
     # Require interactive entry for the Bot Token
     token = input("Enter your Bot Token (xoxb-...): ").strip()
-    
+
     if not token.startswith("xoxb-"):
         print("Error: Invalid token format. Must start with 'xoxb-'.")
         sys.exit(1)
@@ -43,7 +43,7 @@ def bootstrap():
         )
         
         create_db_and_tables()
-        store = SQLModelInstallationStore(engine)
+        store = SQLModelInstallationStore(install_engine)
         store.save(installation)
         
         print("\n✅ Workspace successfully registered in the database!")

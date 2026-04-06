@@ -21,7 +21,7 @@ Extract all items for sale from the Slack post and its replies.
 Post: "{message_text}"
 Replies: "{thread_replies_text}"
 
-Return ONLY this JSON format:
+Fill in this structure:
 
 {{
   "items": [
@@ -35,13 +35,12 @@ Return ONLY this JSON format:
 }}
 
 Rules:
-- A post may contain multiple items. Extract each separately into the items list.
+- A post may contain multiple items. Add each to the items list.
 - price: number or "unknown".
 - features: list of descriptive attributes.
 - status:
     "Sold" if strikethrough (~like this~) OR reactions include heavy_check_mark, white_check_mark, moneybag, x.
     "Available" if no sold indicators.
-    "Pending" only if explicitly stated.
 - If no items, return {{ "items": [] }}.
 - Output only the JSON. No explanations.
 ```

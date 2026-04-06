@@ -150,6 +150,8 @@ cython_debug/
 # VS Code
 .vscode/
 
-# Project specific
+# Project databases
 buyerbot.db
 buyerbot.db-journal
+installations.db
+installations.db-journal

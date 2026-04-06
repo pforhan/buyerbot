@@ -13,6 +13,7 @@ from db import (
     update_item_details, 
     delete_post,
     engine,
+    install_engine,
     SQLModelInstallationStore
 )
 from processor import sync_channel
@@ -23,7 +24,7 @@ load_dotenv()
 # Initialize Slack App with Installation Store for multi-workspace support
 app = App(
     signing_secret=os.environ.get("SLACK_SIGNING_SECRET"),
-    installation_store=SQLModelInstallationStore(engine),
+    installation_store=SQLModelInstallationStore(install_engine),
     token_verification_enabled=False # Since we use installation_store
 )
 

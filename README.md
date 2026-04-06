@@ -154,7 +154,7 @@ It's recommended to run tests from within the project's virtual environment to e
 
 4.  **Run Specific Tests**:
     ```bash
-    pytest tests/test_ollama.py
+    pytest tests/test_ollama_live.py
     ```
 
 ### Debugging and Logging in Tests
@@ -169,7 +169,7 @@ You can control the verbosity of the output using the `DEBUG_LEVEL` environment 
 **Example**:
 ```bash
 # Run tests with full LLM diagnostic output
-DEBUG_LEVEL=full pytest -s tests/test_ollama.py
+DEBUG_LEVEL=full pytest -s tests/test_ollama_live.py
 ```
 
 **Note**: Some tests (like the Ollama integration tests) require a local Ollama instance running and accessible. You can configure the model and timeout via environment variables in your `.env` file:

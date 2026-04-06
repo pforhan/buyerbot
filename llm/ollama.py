@@ -3,7 +3,7 @@ import json
 import httpx
 from typing import Dict, List
 from .base import LLMProvider
-from .prompts import PARSE_REQUEST_PROMPT, ANALYZE_POST_PROMPT
+from .prompts import PARSE_REQUEST_PROMPT, ANALYZE_POST_PROMPT, IS_LISTING_PROMPT
 from logger import log_full
 
 class OllamaProvider(LLMProvider):
@@ -11,7 +11,7 @@ class OllamaProvider(LLMProvider):
         self.model = model
         self.base_url = f"{base_url}/api/generate"
 
-    def _call_ollama(self, prompt: str) -> Dict:
+    def _call_ollama(self, prompt: str, is_json: bool = True) -> Dict:
         log_full(f"Ollama Prompt: {prompt}")
         
         # Get timeout from environment, default to 60s. Use None if 0.
@@ -21,9 +21,11 @@ class OllamaProvider(LLMProvider):
         payload = {
             "model": self.model,
             "prompt": prompt,
-            "stream": False,
-            "format": "json"
+            "stream": False
         }
+        if is_json:
+            payload["format"] = "json"
+            
         try:
             response = httpx.post(self.base_url, json=payload, timeout=timeout)
             response.raise_for_status()
@@ -34,6 +36,9 @@ class OllamaProvider(LLMProvider):
                 raw_content = data.get("thinking", "")
             
             log_full(f"Ollama Raw Content: {raw_content}")
+            
+            if not is_json:
+                return {"raw": raw_content.strip()}
             
             # Try to handle Markdown or prefix/suffix text
             processed_content = raw_content.strip()
@@ -66,7 +71,22 @@ class OllamaProvider(LLMProvider):
         prompt = PARSE_REQUEST_PROMPT.format(query=query)
         return self._call_ollama(prompt)
 
+    def is_listing(self, message_text: str, thread_replies: List[str]) -> bool:
+        thread_replies_text = "\n".join(thread_replies)
+        prompt = IS_LISTING_PROMPT.format(
+            message_text=message_text,
+            thread_replies_text=thread_replies_text
+        )
+        result = self._call_ollama(prompt, is_json=False)
+        raw_response = result.get("raw", "").upper()
+        return "YES" in raw_response
+
     def analyze_post(self, message_text: str, thread_replies: List[str]) -> List[Dict]:
+        # Phase 1: Detection
+        if not self.is_listing(message_text, thread_replies):
+            return []
+            
+        # Phase 2: Extraction
         thread_replies_text = "\n".join(thread_replies)
         prompt = ANALYZE_POST_PROMPT.format(
             message_text=message_text,

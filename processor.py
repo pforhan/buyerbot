@@ -31,6 +31,7 @@ def sync_channel(client: WebClient, channel_id: str, team_id: str, llm: LLMProvi
     
     msg_count = 0
     item_count = 0
+    processed_threads = set()
     
     for msg in messages:
         user_id = msg.get("user", "Unknown")
@@ -41,20 +42,40 @@ def sync_channel(client: WebClient, channel_id: str, team_id: str, llm: LLMProvi
             continue
             
         ts = msg.get("ts")
-        text = _get_text_with_reactions(msg)
+        thread_ts = msg.get("thread_ts")
         
-        # Fetch thread replies if any
+        # Determine the root of the thread to avoid duplicate processing
+        root_ts = thread_ts if thread_ts else ts
+        if root_ts in processed_threads:
+            continue
+        processed_threads.add(root_ts)
+
+        # Fetch the full thread (or just the single message if not a thread)
+        # conversations_replies returns the root message as the first element
+        if thread_ts or msg.get("reply_count", 0) > 0:
+            reply_resp = client.conversations_replies(channel=channel_id, ts=root_ts)
+            thread_messages = reply_resp.get("messages", [])
+        else:
+            thread_messages = [msg]
+
+        if not thread_messages:
+            continue
+
+        root_msg = thread_messages[0]
+        root_user_id = root_msg.get("user", "Unknown")
+        
+        # Re-check bot status for the root message if we started from a reply
+        if root_msg.get("bot_id") or (bot_user_id and root_user_id == bot_user_id):
+            continue
+
+        text = _get_text_with_reactions(root_msg)
         replies = []
-        if msg.get("thread_ts") or msg.get("reply_count", 0) > 0:
-            reply_resp = client.conversations_replies(channel=channel_id, ts=ts)
-            reply_msgs = reply_resp.get("messages", [])[1:] # Skip main post
-            
-            # Filter out bot replies
-            for r in reply_msgs:
-                r_user = r.get("user")
-                if r.get("bot_id") or (bot_user_id and r_user == bot_user_id):
-                    continue
-                replies.append(_get_text_with_reactions(r))
+        
+        for r in thread_messages[1:]:
+            r_user = r.get("user")
+            if r.get("bot_id") or (bot_user_id and r_user == bot_user_id):
+                continue
+            replies.append(_get_text_with_reactions(r))
             
         # Analyze with LLM (returns a list of items)
         items_analysis = llm.analyze_post(text, replies)
@@ -64,10 +85,10 @@ def sync_channel(client: WebClient, channel_id: str, team_id: str, llm: LLMProvi
             msg_count += 1
             item_count += len(items_analysis)
             save_items_for_post(
-                slack_ts=ts,
+                slack_ts=root_ts,
                 channel_id=channel_id,
                 team_id=team_id,
-                user_id=user_id,
+                user_id=root_user_id,
                 items_data=items_analysis
             )
             

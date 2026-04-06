@@ -17,6 +17,12 @@ class MockProvider(LLMProvider):
             "raw_query": query
         }
 
+    def is_listing(self, message_text: str, thread_replies: List[str]) -> bool:
+        # Very simple detection: "FS:" or "FOR SALE:" or product names
+        text = message_text.upper()
+        all_text = (text + " " + " ".join(r.upper() for r in thread_replies))
+        return any(x in all_text for x in ["FS:", "FOR SALE:", "MACBOOK", "IPHONE"])
+
     def analyze_post(self, message_text: str, thread_replies: List[str]) -> List[Dict]:
         # Mock analysis
         text = message_text.lower()

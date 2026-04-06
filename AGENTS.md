@@ -31,6 +31,7 @@ As an AI coding agent working on this project, you must adhere to these specific
 
 ## Testing and Validation
 
+- **Virtual Environment**: Always run tests using the `pytest` executable from the project's virtual environment: `.venv/bin/pytest`.
 - **Mock Provider**: Before testing with a live LLM (Ollama/Claude/etc.), ensure your changes work with the `MockProvider`.
 - **Database Migrations**: If you change the `SlackPost` model in `db.py`, ensure you provide a plan for migrating the local `buyerbot.db`.
 

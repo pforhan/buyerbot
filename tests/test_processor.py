@@ -92,3 +92,96 @@ def test_sync_channel_filters_by_bot_id_when_auth_fails():
         # Even if auth_test failed, bot_id check should still filter out the second message
         assert mock_llm.analyze_post.call_count == 1
         mock_llm.analyze_post.assert_called_once()
+
+def test_sync_channel_skips_non_root_messages():
+    # Setup
+    mock_client = MagicMock()
+    mock_llm = MagicMock()
+    
+    mock_client.auth_test.return_value = {"user_id": "B_BOT_123"}
+    
+    # History includes a root message (ts 1) and its reply (ts 1.1)
+    mock_client.conversations_history.return_value = {
+        "messages": [
+            {"ts": "1", "user": "U_1", "text": "Root message", "thread_ts": "1", "reply_count": 1},
+            {"ts": "1.1", "user": "U_2", "text": "Reply message", "thread_ts": "1"}
+        ]
+    }
+    
+    # Replies for ts 1
+    mock_client.conversations_replies.return_value = {
+        "messages": [
+            {"ts": "1", "user": "U_1", "text": "Root message"},
+            {"ts": "1.1", "user": "U_2", "text": "Reply message"}
+        ]
+    }
+    
+    mock_llm.analyze_post.return_value = []
+    
+    with patch("processor.save_items_for_post") as mock_save:
+        sync_channel(mock_client, "C1", "T1", mock_llm)
+        
+        # Should only be called for the root (ts 1)
+        # If it were called for ts 1.1, the text would be "Reply message"
+        mock_llm.analyze_post.assert_called_once_with("Root message", ["Reply message"])
+        assert mock_llm.analyze_post.call_count == 1
+
+def test_sync_channel_processes_root_from_reply():
+    # Setup: The history only sees the reply (root is old/not in recent 50)
+    mock_client = MagicMock()
+    mock_llm = MagicMock()
+    mock_client.auth_test.return_value = {"user_id": "B_BOT"}
+    
+    # History only has the reply
+    mock_client.conversations_history.return_value = {
+        "messages": [
+            {"ts": "1.1", "user": "U_2", "text": "Reply message", "thread_ts": "1"}
+        ]
+    }
+    
+    # replies API returns the whole thread starting from root
+    mock_client.conversations_replies.return_value = {
+        "messages": [
+            {"ts": "1", "user": "U_1", "text": "Old Root message"},
+            {"ts": "1.1", "user": "U_2", "text": "Reply message"}
+        ]
+    }
+    
+    mock_llm.analyze_post.return_value = []
+    
+    with patch("processor.save_items_for_post") as mock_save:
+        sync_channel(mock_client, "C1", "T1", mock_llm)
+        
+        # Should be called with the root text and the reply list
+        mock_llm.analyze_post.assert_called_once_with("Old Root message", ["Reply message"])
+
+def test_sync_channel_handles_items_in_replies():
+    # Setup: Items are in replies, root is just "For sale (thread)"
+    mock_client = MagicMock()
+    mock_llm = MagicMock()
+    mock_client.auth_test.return_value = {"user_id": "B_BOT"}
+    
+    mock_client.conversations_history.return_value = {
+        "messages": [
+            {"ts": "1", "user": "U_1", "text": "For sale (thread)", "thread_ts": "1", "reply_count": 1}
+        ]
+    }
+    
+    mock_client.conversations_replies.return_value = {
+        "messages": [
+            {"ts": "1", "user": "U_1", "text": "For sale (thread)"},
+            {"ts": "1.1", "user": "U_1", "text": "Macbook Pro $1000"}
+        ]
+    }
+    
+    # LLM should see both texts and be able to extract
+    mock_llm.analyze_post.return_value = [{"product_name": "Macbook Pro", "price": "1000"}]
+    
+    with patch("processor.save_items_for_post") as mock_save:
+        sync_channel(mock_client, "C1", "T1", mock_llm)
+        
+        mock_llm.analyze_post.assert_called_once_with("For sale (thread)", ["Macbook Pro $1000"])
+        mock_save.assert_called_once()
+        args, kwargs = mock_save.call_args
+        assert kwargs["slack_ts"] == "1"
+        assert kwargs["user_id"] == "U_1"

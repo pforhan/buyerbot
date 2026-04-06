@@ -5,7 +5,7 @@ Return ONLY JSON with keys: "intent", "product". Do not include any other text o
 """
 
 ANALYZE_POST_PROMPT = """
-Extract all buy/sell items from the Slack post and its replies.
+Extract all items for sale from the Slack post and its replies.
 
 Post: "{message_text}"
 Replies: "{thread_replies_text}"
@@ -18,15 +18,13 @@ Return ONLY this JSON format:
       "product_name": "",
       "price": "",
       "features": [],
-      "status": "",
-      "post_type": ""
+      "status": ""
     }}
   ]
 }}
 
 Rules:
 - A post may contain multiple items. Extract each separately into the items list.
-- post_type: "Sale" if selling (e.g., "for sale", "selling", "FS:"); "Seeking" if looking to buy (e.g., "WTB", "looking for").
 - price: number or "unknown".
 - features: list of descriptive attributes.
 - status:

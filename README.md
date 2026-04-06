@@ -102,9 +102,8 @@ This script will fetch the necessary metadata and save the installation to your 
 2.  **Sync History**: Run `/buyerbot sync` (or `/buyerbot-sync`) to index existing channel messages.
 3.  **Search**: Use `/buyerbot search <query>` (or just `/buyerbot <query>`) to find items.
 4.  **Add Listings**: Use `/buyerbot add <description>` to list an item for sale.
-5.  **Seek Items**: Use `/buyerbot seeking <description>` if you are looking for something.
-6.  **Manage Dashboard**: Type `/buyerbot` (empty) to open the **Overview Modal** for quick actions.
-7.  **Manage Your Items**: Run `/buyerbot list` (or `manage`) to see and edit your active listings.
+5.  **Manage Dashboard**: Type `/buyerbot` (empty) to open the **Overview Modal** for quick actions.
+6.  **Manage Your Items**: Run `/buyerbot list` (or `manage`) to see and edit your active listings.
 
 ## Direct Listing & Management
 
@@ -112,19 +111,17 @@ BuyerBot allows users to bypass historical parsing and list items directly. Thes
 
 ### Subcommands
 - `/buyerbot add Selling my bike for $100`: Immediately creates a structured "Sale" listing.
-- `/buyerbot seeking Looking for an IKEA desk`: Creates a "Seeking" (WTB) entry.
 - `/buyerbot list`: Shows an ephemeral dashboard of your entries.
 
 ### Management Dashboard
 From the `/buyerbot list` dashboard, you can:
-- **Mark Sold**: Hide the item from search results (for sales).
-- **Mark Obsolete**: Mark a seeking request as no longer needed.
+- **Mark Sold**: Hide the item from search results.
 - **Edit**: Update the name, price, or description via a Modal.
 - **Delete**: Permanently remove the listing.
 
 ### Overview Modal
 Simply typing `/buyerbot` without any arguments opens a central hub. From here, you can:
-- Open the **Add Listing** or **Seeking Item** forms.
+- Open the **Add Listing** form.
 - View **My Listings**.
 - Trigger a **Sync** of the current channel.
 
@@ -179,4 +176,3 @@ DEBUG_LEVEL=full pytest -s tests/test_ollama.py
 - `OLLAMA_MODEL`: The model to use (defaults to `llama3`).
 - `OLLAMA_TIMEOUT`: Timeout for Ollama requests (defaults to `60` seconds).
 - `DEBUG_LEVEL`: Verbosity for diagnostic output (`none`, `basic`, `full`).
-

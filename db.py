@@ -31,7 +31,6 @@ class Item(SQLModel, table=True):
     price: str = Field(default="unknown")
     status: str = Field(default="Available")
     features: str = Field(default="")
-    post_type: str = Field(default="Sale") # "Sale" or "Seeking"
     
     post: Post = Relationship(back_populates="items")
 
@@ -72,8 +71,7 @@ def save_items_for_post(slack_ts: str, channel_id: str, team_id: str, user_id: s
                 product_name=item_data.get("product_name", "Unknown"),
                 price=str(item_data.get("price", "unknown")),
                 status=item_data.get("status") or "Available",
-                features=", ".join(item_data.get("features", [])) if isinstance(item_data.get("features"), list) else str(item_data.get("features", "")),
-                post_type=item_data.get("post_type", "Sale")
+                features=", ".join(item_data.get("features", [])) if isinstance(item_data.get("features"), list) else str(item_data.get("features", ""))
             )
             session.add(item)
             
@@ -183,14 +181,13 @@ def update_item_status(item_id: int, status: str):
             return True
         return False
 
-def update_item_details(item_id: int, product_name: str, price: str, features: str, post_type: str):
+def update_item_details(item_id: int, product_name: str, price: str, features: str):
     with Session(engine) as session:
         item = session.get(Item, item_id)
         if item:
             item.product_name = product_name
             item.price = price
             item.features = features
-            item.post_type = post_type
             item.post.last_updated = time.time()
             session.commit()
             return True

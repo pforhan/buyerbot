@@ -20,7 +20,7 @@ def test_sync_channel_ignores_bot_posts():
     }
     
     # Mock LLM analysis
-    mock_llm.analyze_post.return_value = [{"product_name": "Macbook", "price": "1000", "status": "Available", "post_type": "Sale"}]
+    mock_llm.analyze_post.return_value = [{"product_name": "Macbook", "price": "1000", "status": "Available"}]
     
     # Patch save_items_for_post to avoid DB calls
     with patch("processor.save_items_for_post") as mock_save:

@@ -52,8 +52,7 @@ def get_overview_modal(channel_id):
             {
                 "type": "actions",
                 "elements": [
-                    {"type": "button", "text": {"type": "plain_text", "text": "Add Listing (Sale)"}, "action_id": "open_add_modal", "style": "primary"},
-                    {"type": "button", "text": {"type": "plain_text", "text": "Seeking Item (WTB)"}, "action_id": "open_seeking_modal"},
+                    {"type": "button", "text": {"type": "plain_text", "text": "Add Listing"}, "action_id": "open_add_modal", "style": "primary"},
                     {"type": "button", "text": {"type": "plain_text", "text": "My Listings"}, "action_id": "open_my_listings"},
                 ]
             },
@@ -66,7 +65,7 @@ def get_overview_modal(channel_id):
         ]
     }
 
-def get_item_modal(title, callback_id, post_type="Sale", context=None):
+def get_item_modal(title, callback_id, context=None):
     context = context or {}
     item_id = context.get("item_id", "")
     channel_id = context.get("channel_id", "")
@@ -99,30 +98,13 @@ def get_item_modal(title, callback_id, post_type="Sale", context=None):
                 "block_id": "features_block",
                 "element": {"type": "plain_text_input", "multiline": True, "action_id": "features", "initial_value": context.get("features", "")},
                 "label": {"type": "plain_text", "text": "Features/Description"},
-            },
-            {
-                "type": "input",
-                "block_id": "type_block",
-                "element": {
-                    "type": "static_select",
-                    "action_id": "post_type",
-                    "initial_option": {
-                        "text": {"type": "plain_text", "text": post_type},
-                        "value": post_type
-                    },
-                    "options": [
-                        {"text": {"type": "plain_text", "text": "Sale"}, "value": "Sale"},
-                        {"text": {"type": "plain_text", "text": "Seeking"}, "value": "Seeking"},
-                    ]
-                },
-                "label": {"type": "plain_text", "text": "Listing Type"},
             }
         ]
     }
 
 def format_listing_blocks(item, owner_id):
-    quote_box = ">>> " if item.post_type == "Sale" else "> "
-    prefix = "📦 *NEW LISTING*" if item.post_type == "Sale" else "🔍 *SEEKING ITEM*"
+    quote_box = ">>> "
+    prefix = "📦 *NEW LISTING*"
     
     return [
         {
@@ -154,36 +136,33 @@ def handle_command(ack, body, respond, command, client):
     args = parts[1] if len(parts) > 1 else ""
 
     if subcommand == "add":
-        handle_add_listing(args, user_id, channel_id, team_id, trigger_id, client, respond, "Sale")
-    elif subcommand == "seeking":
-        handle_add_listing(args, user_id, channel_id, team_id, trigger_id, client, respond, "Seeking")
+        handle_add_listing(args, user_id, channel_id, team_id, trigger_id, client, respond)
     elif subcommand in ["list", "manage"]:
         handle_list_user_items(user_id, team_id, respond)
     elif subcommand == "search":
         handle_search(args, channel_id, team_id, respond)
     elif subcommand == "help":
-        respond("Usage:\n`/buyerbot add <description>`\n`/buyerbot seeking <description>`\n`/buyerbot list` (manage your items)\n`/buyerbot search <query>`")
+        respond("Usage:\n`/buyerbot add <description>`\n`/buyerbot list` (manage your listings)\n`/buyerbot search <query>`")
     else:
         # Default to search if it doesn't look like a subcommand
         handle_search(text, channel_id, team_id, respond)
 
-def handle_add_listing(text, user_id, channel_id, team_id, trigger_id, client, respond, post_type):
+def handle_add_listing(text, user_id, channel_id, team_id, trigger_id, client, respond):
     if not text:
         client.views_open(
             trigger_id=trigger_id, 
-            view=get_item_modal(f"Add {post_type}", "add_item_modal", post_type, {"channel_id": channel_id})
+            view=get_item_modal("Add Listing", "add_item_modal", {"channel_id": channel_id})
         )
         return
 
     # Try analysis
     items_analysis = llm.analyze_post(text, [])
     if not items_analysis:
-        respond(f"I couldn't parse that {post_type} entry correctly. Try being more specific, or just use `/buyerbot {post_type.lower()}` to open the form.")
+        respond("I couldn't parse that listing entry correctly. Try being more specific, or just use `/buyerbot add` to open the form.")
         return
 
     # Post to channel publicly
     for item_data in items_analysis:
-        item_data["post_type"] = post_type
         # Explicitly ensure newly added items are "Available"
         item_data["status"] = "Available"
         
@@ -197,12 +176,11 @@ def handle_add_listing(text, user_id, channel_id, team_id, trigger_id, client, r
             product_name=item_data.get("product_name", "Unknown"), 
             price=str(item_data.get("price", "unknown")), 
             features=features_str,
-            post_type=post_type,
             status="Available", # Required by model constructor
             post_id=0 # Temporary post_id for model constructor
         )
         
-        text = f"New {post_type} listing: {dummy_item.product_name}"
+        text = f"New listing: {dummy_item.product_name}"
         result = client.chat_postMessage(channel=channel_id, text=text, blocks=format_listing_blocks(dummy_item, user_id))
         ts = result["ts"]
         
@@ -217,7 +195,7 @@ def get_user_listing_blocks(items):
         status_emoji = "✅" if item.status == "Available" else "💰" if item.status == "Sold" else "⚪"
         blocks.append({
             "type": "section",
-            "text": {"type": "mrkdwn", "text": f"{status_emoji} *{item.product_name}* ({item.post_type}) - {item.price}\nStatus: _{item.status}_"},
+            "text": {"type": "mrkdwn", "text": f"{status_emoji} *{item.product_name}* - {item.price}\nStatus: _{item.status}_"},
             "accessory": {
                 "type": "overflow",
                 "action_id": "listing_overflow_action",
@@ -264,7 +242,7 @@ def handle_search(query, channel_id, team_id, respond):
                 "type": "mrkdwn",
                 "text": (
                     f"*Product*: {item.product_name}{is_direct_badge}\n"
-                    f"*Type*: {item.post_type} | *Price*: {item.price}\n"
+                    f"*Price*: {item.price}\n"
                     f"*User*: {seller_mention}\n"
                     f"*Features*: {item.features}"
                 )
@@ -280,13 +258,7 @@ def action_handle_open_add(ack, body, client):
     ack()
     # If this came from a modal (overview), private_metadata might contain channel_id
     channel_id = body.get("view", {}).get("private_metadata", "")
-    client.views_update(view_id=body["view"]["id"], view=get_item_modal("Add Listing", "add_item_modal", "Sale", {"channel_id": channel_id}))
-
-@app.action("open_seeking_modal")
-def action_handle_open_seeking(ack, body, client):
-    ack()
-    channel_id = body.get("view", {}).get("private_metadata", "")
-    client.views_update(view_id=body["view"]["id"], view=get_item_modal("Seeking Item", "add_item_modal", "Seeking", {"channel_id": channel_id}))
+    client.views_update(view_id=body["view"]["id"], view=get_item_modal("Add Listing", "add_item_modal", {"channel_id": channel_id}))
 
 @app.action("open_my_listings")
 def action_open_my_listings(ack, body, client):
@@ -389,12 +361,12 @@ def handle_overflow(ack, body, respond, client):
                 if "view" in body:
                     client.views_update(
                         view_id=body["view"]["id"],
-                        view=get_item_modal(f"Edit {item.product_name}", "edit_item_modal", item.post_type, initial_data)
+                        view=get_item_modal(f"Edit {item.product_name}", "edit_item_modal", initial_data)
                     )
                 else:
                     client.views_open(
                         trigger_id=body["trigger_id"], 
-                        view=get_item_modal(f"Edit {item.product_name}", "edit_item_modal", item.post_type, initial_data)
+                        view=get_item_modal(f"Edit {item.product_name}", "edit_item_modal", initial_data)
                     )
 
 @app.view("add_item_modal")
@@ -411,13 +383,12 @@ def handle_add_item_submit(ack, body, client, view):
     product_name = values["product_name_block"]["product_name"]["value"]
     price = values["price_block"]["price"]["value"]
     features = values["features_block"]["features"]["value"]
-    post_type = values["type_block"]["post_type"]["selected_option"]["value"]
     
     # Save dummy item for formatting
     from db import Item
-    dummy_item = Item(product_name=product_name, price=price, features=features, post_type=post_type)
+    dummy_item = Item(product_name=product_name, price=price, features=features)
     
-    text = f"New {post_type} listing: {dummy_item.product_name}"
+    text = f"New listing: {dummy_item.product_name}"
     result = client.chat_postMessage(channel=channel_id, text=text, blocks=format_listing_blocks(dummy_item, user_id))
     ts = result["ts"]
     
@@ -446,9 +417,8 @@ def handle_edit_item_submit(ack, body, view):
     product_name = values["product_name_block"]["product_name"]["value"]
     price = values["price_block"]["price"]["value"]
     features = values["features_block"]["features"]["value"]
-    post_type = values["type_block"]["post_type"]["selected_option"]["value"]
     
-    update_item_details(item_id, product_name, price, features, post_type)
+    update_item_details(item_id, product_name, price, features)
 
 @app.command("/buyerbot-sync")
 def handle_sync(ack, respond, command, client):
@@ -464,11 +434,6 @@ def handle_sync(ack, respond, command, client):
     except Exception as e:
         log_basic(f"Sync failed: {e}")
         respond(f"Sync failed: {e}")
-
-if __name__ == "__main__":
-    create_db_and_tables()
-    handler = SocketModeHandler(app, os.environ.get("SLACK_APP_TOKEN"))
-    handler.start()
 
 if __name__ == "__main__":
     create_db_and_tables()

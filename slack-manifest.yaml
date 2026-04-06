@@ -12,7 +12,7 @@ features:
     always_online: true
   slash_commands:
     - command: /buyerbot
-      description: Add, search, or manage listings (add, seeking, list, search).
+      description: Add, search, or manage listings (add, list, search).
       usage_hint: "[subcommand] [args]"
       should_escape: false
     - command: /buyerbot-sync

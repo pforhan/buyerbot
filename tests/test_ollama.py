@@ -81,8 +81,6 @@ def test_ollama_analyze_single_item():
         assert "product_name" in item
         assert "price" in item
         assert "status" in item
-        assert "post_type" in item
-        assert item["post_type"] == "Sale"
         print(f"✓ Single item analysis successful: {item}")
     except Exception as e:
         pytest.fail(f"Single item analysis test failed: {e}")
@@ -110,38 +108,13 @@ def test_ollama_analyze_multiple_items():
         
         assert macbook is not None
         assert iphone is not None
-        assert macbook["post_type"] == "Sale"
-        assert iphone["post_type"] == "Sale"
         
         print(f"✓ Multiple items analysis successful. Found {len(items)} items.")
         for i in items:
-            print(f"  - {i['product_name']} ({i['status']}, {i['post_type']}): {i['price']}")
+            print(f"  - {i['product_name']} ({i['status']}): {i['price']}")
             
     except Exception as e:
         pytest.fail(f"Multiple items analysis test failed: {e}")
-
-def test_ollama_analyze_seeking_item():
-    """
-    Test if Ollama correctly identifies a 'Seeking' (WTB) post.
-    """
-    model = os.environ.get("OLLAMA_MODEL", "llama3")
-    provider = OllamaProvider(model=model)
-    
-    msg_text = "Anyone have a used Macbook Pro for sale? Looking to buy one for around $800."
-    replies = []
-    
-    print(f"\nTesting analysis of a 'Seeking' post: '{msg_text}'...")
-    
-    try:
-        items = provider.analyze_post(msg_text, replies)
-        assert isinstance(items, list)
-        assert len(items) >= 1
-        item = items[0]
-        assert "macbook" in item["product_name"].lower()
-        assert item["post_type"] == "Seeking"
-        print(f"✓ Seeking item analysis successful: {item}")
-    except Exception as e:
-        pytest.fail(f"Seeking item analysis test failed: {e}")
 
 def test_ollama_analyze_conversational_post():
     """
@@ -170,7 +143,6 @@ if __name__ == "__main__":
         test_ollama_json_parsing()
         test_ollama_analyze_single_item()
         test_ollama_analyze_multiple_items()
-        test_ollama_analyze_seeking_item()
         test_ollama_analyze_conversational_post()
         print("\nAll Ollama integration tests passed!")
     except Exception as e:

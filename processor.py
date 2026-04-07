@@ -93,3 +93,4 @@ def sync_channel(client: WebClient, channel_id: str, team_id: str, llm: LLMProvi
             )
             
     log_basic(f"Sync complete. Processed {msg_count} messages, found {item_count} items.")
+    return msg_count, item_count

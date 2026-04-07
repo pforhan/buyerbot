@@ -22,7 +22,7 @@ This document tracks planned features, improvements, and technical debt for the 
 
 ## User Experience (Slack)
 - [ ] **Interactive Summaries**: Allow users to click "Details" on a search result to see the full thread or original message link.
-- [ ] **Channel Selection**: Allow `/buyerbot-sync` to take a channel ID or name as an argument.
+- [ ] **Channel Selection**: Allow `/buyerbot sync` to take a channel ID or name as an argument.
 - [ ] **Pagination**: Handle search results that exceed Slack's block limit by adding pagination buttons.
 - [ ] **Better Formatting**: Enhance the Block Kit UI with images (if available in the post) and better visual hierarchy.
 

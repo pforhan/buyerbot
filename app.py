@@ -117,6 +117,27 @@ def format_listing_blocks(item, owner_id):
         }
     ]
 
+# --- Sync Logic ---
+def do_sync(client, channel_id, team_id, llm, user_id):
+    """
+    Handles the synchronization process, including sending status messages and calling sync_channel.
+    """
+    log_basic(f"Received /buyerbot-sync command from {user_id} for channel {channel_id} (team {team_id})")
+
+    # Send start message
+    client.chat_postEphemeral(channel=channel_id, user=user_id, text="🔄 Syncing channel history... this may take a moment.")
+
+    try:
+        # Perform sync and get stats
+        processed_msgs, found_items = sync_channel(client, channel_id, team_id, llm)
+        
+        # Send end message with stats
+        client.chat_postEphemeral(channel=channel_id, user=user_id, text=f"✅ Sync complete! Processed {processed_msgs} messages and found {found_items} items.")
+    except Exception as e:
+        log_basic(f"Sync failed: {e}")
+        client.chat_postEphemeral(channel=channel_id, user=user_id, text=f"❌ Sync failed: {e}")
+
+
 # --- Command Handlers ---
 
 @app.command("/buyerbot")
@@ -142,6 +163,8 @@ def handle_command(ack, body, respond, command, client):
         handle_list_user_items(user_id, team_id, respond)
     elif subcommand == "search":
         handle_search(args, channel_id, team_id, respond)
+    elif subcommand == "sync":
+        do_sync(client, channel_id, team_id, llm, user_id)
     elif subcommand == "help":
         respond("Usage:\n`/buyerbot add <description>`\n`/buyerbot list` (manage your listings)\n`/buyerbot search <query>`")
     else:
@@ -303,6 +326,7 @@ def action_trigger_sync(ack, body, client):
          client.chat_postEphemeral(channel=user_id, user=user_id, text="Please use `/buyerbot sync` in a specific channel.")
          return
 
+    # Update modal to show syncing status
     client.views_update(
          view_id=body["view"]["id"],
          view={
@@ -313,8 +337,8 @@ def action_trigger_sync(ack, body, client):
          }
     )
     
-    sync_channel(client, channel_id, team_id, llm)
-    client.chat_postEphemeral(channel=channel_id, user=user_id, text="Sync complete!")
+    # Perform sync and get stats
+    do_sync(client, channel_id, team_id, llm, user_id)
 
 @app.action("listing_overflow_action")
 def handle_overflow(ack, body, respond, client):
@@ -421,20 +445,7 @@ def handle_edit_item_submit(ack, body, view):
     
     update_item_details(item_id, product_name, price, features)
 
-@app.command("/buyerbot-sync")
-def handle_sync(ack, respond, command, client):
-    ack()
-    channel_id = command["channel_id"]
-    user_id = command["user_id"]
-    team_id = command["team_id"]
-    log_basic(f"Received /buyerbot-sync command from {user_id} for channel {channel_id} (team {team_id})")
-    respond("Syncing channel history... this may take a moment.")
-    try:
-        sync_channel(client, channel_id, team_id, llm)
-        respond("Sync complete!")
-    except Exception as e:
-        log_basic(f"Sync failed: {e}")
-        respond(f"Sync failed: {e}")
+
 
 if __name__ == "__main__":
     create_db_and_tables()

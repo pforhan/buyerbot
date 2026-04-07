@@ -8,6 +8,7 @@ This document tracks planned features, improvements, and technical debt for the 
 - [x] **Multi-Product Support**: A single Slack post can contain multiple items, and BuyerBot will index them individually.
 - [x] **Seller Tracking**: Automatically identifies the Slack user who posted an item.
 - [x] **Sold Status Detection**: Improved the logic for detecting "Sold" status by passing message reactions and strikethrough formatting to the LLM.
+- [x] **Thinking Flag**: Added an environment flag `LLM_THINKING` to control whether models (like DeepSeek-R1) are asked to "think" before providing JSON.
 
 ## LLM Providers
 - [ ] **Claude (Anthropic)**: Add an `AnthropicProvider` using the `anthropic` Python SDK.

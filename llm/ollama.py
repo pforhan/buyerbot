@@ -7,9 +7,10 @@ from .prompts import PARSE_REQUEST_PROMPT, ANALYZE_POST_PROMPT, IS_LISTING_PROMP
 from logger import log_full
 
 class OllamaProvider(LLMProvider):
-    def __init__(self, model: str = "llama3", base_url: str = "http://localhost:11434"):
+    def __init__(self, model: str = "llama3", base_url: str = "http://localhost:11434", thinking: bool = False):
         self.model = model
         self.base_url = f"{base_url}/api/generate"
+        self.thinking = thinking
 
     def _call_ollama(self, prompt: str, is_json: bool = True) -> Dict:
         log_full(f"Ollama Prompt: {prompt}")
@@ -21,7 +22,8 @@ class OllamaProvider(LLMProvider):
         payload = {
             "model": self.model,
             "prompt": prompt,
-            "stream": False
+            "stream": False,
+            "think": self.thinking
         }
         if is_json:
             payload["format"] = "json"

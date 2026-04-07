@@ -33,7 +33,10 @@ provider_type = os.environ.get("LLM_PROVIDER", "mock").lower()
 log_basic(f"Initializing with LLM_PROVIDER: {provider_type}")
 
 if provider_type == "ollama":
-    llm = OllamaProvider(model=os.environ.get("OLLAMA_MODEL", "llama3"))
+    llm = OllamaProvider(
+        model=os.environ.get("OLLAMA_MODEL", "llama3.2"),
+        thinking=os.environ.get("LLM_THINKING", "false").lower() == "true"
+    )
 else:
     llm = MockProvider()
 

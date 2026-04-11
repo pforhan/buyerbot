@@ -37,7 +37,9 @@ Fill in this structure:
       "product_name": "",
       "price": "",
       "features": [],
-      "status": ""
+      "status": "",
+      "category": "",
+      "tags": []
     }}
   ]
 }}
@@ -49,9 +51,8 @@ Rules:
 - status:
     "Sold" if strikethrough (~like this~) OR reactions include heavy_check_mark, white_check_mark, moneybag, x.
     "Available" if no sold indicators.
+- category: A single broad category (e.g., Electronics, Furniture, Books, etc.).
+- tags: 5–10 standardized tags for this item description.
 - If no items, return {{ "items": [] }}.
 - Output only the JSON. No explanations.
-```
-
-Do not add any explanation or extra text. Only return the JSON.
 """

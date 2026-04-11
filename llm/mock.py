@@ -46,15 +46,19 @@ class MockProvider(LLMProvider):
             items.append({
                 "product_name": "Macbook",
                 "price": "Check post",
-                "features": [],
-                "status": status
+                "features": ["Laptop", "Apple"],
+                "status": status,
+                "category": "Electronics",
+                "tags": ["Apple", "Laptop", "MacBook", "macOS", "Computer"]
             })
         if "iphone" in text:
             items.append({
                 "product_name": "iPhone",
                 "price": "Check post",
-                "features": [],
-                "status": status
+                "features": ["Smartphone", "Apple"],
+                "status": status,
+                "category": "Electronics",
+                "tags": ["Apple", "iPhone", "Smartphone", "iOS", "Mobile"]
             })
             
         return items

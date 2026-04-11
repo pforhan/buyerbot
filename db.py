@@ -41,6 +41,8 @@ class Item(SQLModel, table=True):
     price: str = Field(default="unknown")
     status: str = Field(default="Available")
     features: str = Field(default="")
+    category: Optional[str] = Field(default=None)
+    tags: Optional[str] = Field(default=None)
     
     post: Post = Relationship(back_populates="items")
 
@@ -79,7 +81,9 @@ def save_items_for_post(slack_ts: str, channel_id: str, team_id: str, user_id: s
                 product_name=item_data.get("product_name", "Unknown"),
                 price=str(item_data.get("price", "unknown")),
                 status=item_data.get("status") or "Available",
-                features=", ".join(item_data.get("features", [])) if isinstance(item_data.get("features"), list) else str(item_data.get("features", ""))
+                features=", ".join(item_data.get("features", [])) if isinstance(item_data.get("features"), list) else str(item_data.get("features", "")),
+                category=item_data.get("category"),
+                tags=", ".join(item_data.get("tags", [])) if isinstance(item_data.get("tags"), list) else item_data.get("tags")
             )
             session.add(item)
             
@@ -88,6 +92,7 @@ def save_items_for_post(slack_ts: str, channel_id: str, team_id: str, user_id: s
         return post
 
 def search_items(product_query: str, channel_id: str, team_id: str) -> List[Item]:
+    from sqlalchemy import or_
     with Session(engine) as session:
         statement = (
             select(Item)
@@ -95,9 +100,18 @@ def search_items(product_query: str, channel_id: str, team_id: str) -> List[Item
             .join(Post)
             .where(Post.channel_id == channel_id)
             .where(Post.team_id == team_id)
-            .where(Item.product_name.contains(product_query))
-            .where(Item.status.in_(["Available", "Pending"])) # Hide Sold/Obsolete
-            .order_by(Post.is_direct.desc(), Post.last_updated.desc()) # Direct first
+            .where(or_(
+                Item.product_name.contains(product_query),
+                Item.tags.contains(product_query),
+                Item.category.contains(product_query)
+            ))
+            .where(Item.status.in_(["Available", "Sold"])) # Hide Obsolete
+            .order_by(
+                Post.is_direct.desc(), 
+                # Case expression for status ordering: Available (0), Sold (1)
+                Item.status == "Sold", 
+                Post.last_updated.desc()
+            )
         )
         return list(session.exec(statement).all())
 
@@ -189,13 +203,17 @@ def update_item_status(item_id: int, status: str):
             return True
         return False
 
-def update_item_details(item_id: int, product_name: str, price: str, features: str):
+def update_item_details(item_id: int, product_name: str, price: str, features: str, category: str = None, tags: str = None):
     with Session(engine) as session:
         item = session.get(Item, item_id)
         if item:
             item.product_name = product_name
             item.price = price
             item.features = features
+            if category is not None:
+                item.category = category
+            if tags is not None:
+                item.tags = tags
             item.post.last_updated = time.time()
             session.commit()
             return True

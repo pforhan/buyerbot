@@ -102,6 +102,20 @@ def get_item_modal(title, callback_id, context=None):
                 "block_id": "features_block",
                 "element": {"type": "plain_text_input", "multiline": True, "action_id": "features", "initial_value": context.get("features", "")},
                 "label": {"type": "plain_text", "text": "Features/Description"},
+            },
+            {
+                "type": "input",
+                "block_id": "category_block",
+                "element": {"type": "plain_text_input", "action_id": "category", "initial_value": context.get("category", "")},
+                "label": {"type": "plain_text", "text": "Category"},
+                "optional": True
+            },
+            {
+                "type": "input",
+                "block_id": "tags_block",
+                "element": {"type": "plain_text_input", "action_id": "tags", "initial_value": context.get("tags", "")},
+                "label": {"type": "plain_text", "text": "Tags (comma separated)"},
+                "optional": True
             }
         ]
     }
@@ -110,12 +124,15 @@ def format_listing_blocks(item, owner_id):
     quote_box = ">>> "
     prefix = "📦 *NEW LISTING*"
     
+    category_str = f"\n{quote_box}*Category*: {item.category}" if item.category else ""
+    tags_str = f"\n{quote_box}*Tags*: {item.tags}" if item.tags else ""
+    
     return [
         {
             "type": "section",
             "text": {
                 "type": "mrkdwn",
-                "text": f"{prefix} from <@{owner_id}>:\n{quote_box}*Product*: {item.product_name}\n{quote_box}*Price*: {item.price}\n{quote_box}*Features*: {item.features}"
+                "text": f"{prefix} from <@{owner_id}>:\n{quote_box}*Product*: {item.product_name}\n{quote_box}*Price*: {item.price}\n{quote_box}*Features*: {item.features}{category_str}{tags_str}"
             }
         }
     ]
@@ -204,7 +221,9 @@ def handle_add_listing(text, user_id, channel_id, team_id, trigger_id, client, r
             price=str(item_data.get("price", "unknown")), 
             features=features_str,
             status="Available", # Required by model constructor
-            post_id=0 # Temporary post_id for model constructor
+            post_id=0, # Temporary post_id for model constructor
+            category=item_data.get("category"),
+            tags=", ".join(item_data.get("tags", [])) if isinstance(item_data.get("tags"), list) else item_data.get("tags")
         )
         
         text = f"New listing: {dummy_item.product_name}"
@@ -215,25 +234,62 @@ def handle_add_listing(text, user_id, channel_id, team_id, trigger_id, client, r
     
     respond(f"✅ Listing created in <#{channel_id}>!")
 
+def format_item_mrkdwn(item, include_seller=False):
+    is_sold = item.status == "Sold"
+    
+    seller_part = ""
+    if include_seller:
+        seller_mention = f"<@{item.post.user_id}>" if item.post else "Unknown"
+        is_direct_badge = " [Direct]" if item.post and item.post.is_direct else ""
+        seller_part = f"\n*Seller*: {seller_mention}{is_direct_badge}"
+        
+    tags_part = f"\n*Tags*: {item.tags}" if item.tags else ""
+    
+    # We want a multi-line format for everything now
+    lines = [
+        f"*Product*: {item.product_name}",
+        f"*Price*: {item.price}",
+        f"*Features*: {item.features}{seller_part}{tags_part}"
+    ]
+    
+    content = "\n".join(lines)
+    if is_sold:
+        # Wrap the whole block in strikethrough
+        return f"~{content}~"
+    return content
+
 def get_user_listing_blocks(items):
     blocks = [{"type": "header", "text": {"type": "plain_text", "text": "My Listings"}}, {"type": "divider"}]
     
+    # Group items by category
+    items_by_category = {}
     for item in items:
-        status_emoji = "✅" if item.status == "Available" else "💰" if item.status == "Sold" else "⚪"
+        cat = item.category or "Other"
+        if cat not in items_by_category:
+            items_by_category[cat] = []
+        items_by_category[cat].append(item)
+    
+    for cat, cat_items in items_by_category.items():
         blocks.append({
             "type": "section",
-            "text": {"type": "mrkdwn", "text": f"{status_emoji} *{item.product_name}* - {item.price}\nStatus: _{item.status}_"},
-            "accessory": {
-                "type": "overflow",
-                "action_id": "listing_overflow_action",
-                "options": [
-                    {"text": {"type": "plain_text", "text": "Mark Sold"}, "value": f"sold:{item.id}"},
-                    {"text": {"type": "plain_text", "text": "Mark Obsolete"}, "value": f"obsolete:{item.id}"},
-                    {"text": {"type": "plain_text", "text": "Edit"}, "value": f"edit:{item.id}"},
-                    {"text": {"type": "plain_text", "text": "Delete"}, "value": f"delete:{item.id}"}
-                ]
-            }
+            "text": {"type": "mrkdwn", "text": f"*Category: {cat}*"}
         })
+        for item in cat_items:
+            blocks.append({
+                "type": "section",
+                "text": {"type": "mrkdwn", "text": format_item_mrkdwn(item, include_seller=False)},
+                "accessory": {
+                    "type": "overflow",
+                    "action_id": "listing_overflow_action",
+                    "options": [
+                        {"text": {"type": "plain_text", "text": "Mark Sold"}, "value": f"sold:{item.id}"},
+                        {"text": {"type": "plain_text", "text": "Mark Obsolete"}, "value": f"obsolete:{item.id}"},
+                        {"text": {"type": "plain_text", "text": "Edit"}, "value": f"edit:{item.id}"},
+                        {"text": {"type": "plain_text", "text": "Delete"}, "value": f"delete:{item.id}"}
+                    ]
+                }
+            })
+        blocks.append({"type": "divider"})
     return blocks
 
 def handle_list_user_items(user_id, team_id, respond):
@@ -259,22 +315,28 @@ def handle_search(query, channel_id, team_id, respond):
         {"type": "divider"}
     ]
     
+    # Group items by category
+    items_by_category = {}
     for item in matches:
-        seller_mention = f"<@{item.post.user_id}>" if item.post else "Unknown"
-        is_direct_badge = " [Direct Listing]" if item.post and item.post.is_direct else ""
-        
+        cat = item.category or "Other"
+        if cat not in items_by_category:
+            items_by_category[cat] = []
+        items_by_category[cat].append(item)
+    
+    for cat, cat_items in items_by_category.items():
         blocks.append({
             "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": (
-                    f"*Product*: {item.product_name}{is_direct_badge}\n"
-                    f"*Price*: {item.price}\n"
-                    f"*User*: {seller_mention}\n"
-                    f"*Features*: {item.features}"
-                )
-            }
+            "text": {"type": "mrkdwn", "text": f"*Category: {cat}*"}
         })
+        for item in cat_items:
+            blocks.append({
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": format_item_mrkdwn(item, include_seller=True)
+                }
+            })
+        blocks.append({"type": "divider"})
         
     respond(blocks=blocks)
 
@@ -384,7 +446,9 @@ def handle_overflow(ack, body, respond, client):
                     "item_id": item.id,
                     "product_name": item.product_name,
                     "price": item.price,
-                    "features": item.features
+                    "features": item.features,
+                    "category": item.category or "",
+                    "tags": item.tags or ""
                 }
                 if "view" in body:
                     client.views_update(
@@ -411,10 +475,12 @@ def handle_add_item_submit(ack, body, client, view):
     product_name = values["product_name_block"]["product_name"]["value"]
     price = values["price_block"]["price"]["value"]
     features = values["features_block"]["features"]["value"]
+    category = values["category_block"]["category"]["value"]
+    tags = values["tags_block"]["tags"]["value"]
     
     # Save dummy item for formatting
     from db import Item
-    dummy_item = Item(product_name=product_name, price=price, features=features)
+    dummy_item = Item(product_name=product_name, price=price, features=features, category=category, tags=tags, post_id=0)
     
     text = f"New listing: {dummy_item.product_name}"
     result = client.chat_postMessage(channel=channel_id, text=text, blocks=format_listing_blocks(dummy_item, user_id))
@@ -429,7 +495,9 @@ def handle_add_item_submit(ack, body, client, view):
             "product_name": product_name,
             "price": price,
             "features": features,
-            "status": "Available"
+            "status": "Available",
+            "category": category,
+            "tags": tags
         }],
         is_direct=True
     )
@@ -445,8 +513,10 @@ def handle_edit_item_submit(ack, body, view):
     product_name = values["product_name_block"]["product_name"]["value"]
     price = values["price_block"]["price"]["value"]
     features = values["features_block"]["features"]["value"]
+    category = values["category_block"]["category"]["value"]
+    tags = values["tags_block"]["tags"]["value"]
     
-    update_item_details(item_id, product_name, price, features)
+    update_item_details(item_id, product_name, price, features, category, tags)
 
 
 

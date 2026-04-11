@@ -18,7 +18,9 @@
     - Multiple Product Names (if applicable)
     - Prices
     - Features
-    - Availability Status (Available, Sold, Pending)
+    - Tags
+    - Categories
+    - Availability Status (Available, Sold)
 3.  **Local Indexing**: Store extracted data in a local SQLite database (using `Post` and `Item` models) for fast searching.
 4.  **Socket Mode Implementation**: Run locally for development without requiring public endpoints.
 
